@@ -10,9 +10,9 @@ async function main(){
   const html=fs.readFileSync(path.join(root,'extension/editor.html'),'utf8').replace(/<script[\s\S]*?<\/script>/g,'').replace(/<link[^>]+>/g,'');
   await page.route('http://notes.test/**',route=>route.fulfill({contentType:'text/html',body:html}));await page.goto('http://notes.test/');
   await page.evaluate(()=>{
-   globalThis.chrome={runtime:{id:'renderer-test'}};globalThis.noteListeners=[];
-   globalThis.NoteConnection={onMessage:fn=>noteListeners.push(fn),async request(type,{note}={}){if(type==='EDITOR_READY')return {note:{id:'note-test',text:'',revision:0},options:{}};if(type==='SAVE_NOTE')return {note:{...note,revision:note.revision+1}};return {ok:true};}};
-   globalThis.noteVisible=true;globalThis.noteMode='panel';globalThis.quietApplyRequest=null;globalThis.NotepadAssistant={visible:()=>noteVisible,mode:()=>noteMode,canApplyNote:()=>noteVisible&&noteMode==='panel',canApplyQuietNote:(id,requestId)=>id==='assistant-test'&&requestId===quietApplyRequest,owns:id=>id==='assistant-test',noteContext(){},working:()=>false};
+   globalThis.chrome={runtime:{id:'renderer-test'}};globalThis.noteListeners=[];globalThis.noteSavedDrafts=[];
+   globalThis.NoteConnection={onMessage:fn=>noteListeners.push(fn),async request(type,{note}={}){if(type==='EDITOR_READY')return {note:{id:'note-test',text:'',revision:0},options:{}};if(type==='SAVE_NOTE'){noteSavedDrafts.push({...note});return {note:{...note,revision:note.revision+1}};}return {ok:true};}};
+   globalThis.noteVisible=true;globalThis.noteMode='panel';globalThis.quietApplyRequest=null;globalThis.NotepadAssistant={visible:()=>noteVisible,mode:()=>noteMode,canApplyNote:()=>noteVisible&&noteMode==='panel',canApplyQuietNote:(id,requestId)=>id==='assistant-test'&&requestId===quietApplyRequest,owns:id=>id==='assistant-test',noteContext(){},working:()=>false,hide(){noteVisible=false;}};
    globalThis.noteMessage=m=>{let result;for(const fn of noteListeners)fn(m,{id:'renderer-test'},value=>{result=value;});return result;};
   });
   for(const file of ['core.js','rich-editor.js','editor.js'])await page.addScriptTag({path:path.join(root,'extension',file)});
@@ -61,7 +61,31 @@ async function main(){
    results.push({guard:'quiet grant in panel mode',expectedReason:'context_changed',reply:noteMessage({type:'NOTE_AI_PROPOSE',noteId:'note-test',assistantId:'assistant-test',editRequestId:'quiet-request',expectedText:'Keep panel baseline',expectedHtml:'',expectedRevision:0,text:'Wrong mode replacement',explicitQuiet:true}),text:editor.value,expectedText:'Keep panel baseline'});
    noteMode='quiet';quietApplyRequest=null;
    results.push({guard:'unrequested quiet file presentation',expectedReason:undefined,reply:noteMessage({type:'NOTE_FILE_PRESENTED',noteId:'note-test',assistantId:'assistant-test',editRequestId:'quiet-request',explicitQuiet:true,file:{noteId:'note-test'}}),text:editor.value,expectedText:'Keep panel baseline'});
+   const rawFailure='Codex could not save this AI revision. Open Reference with Alt+W. File: C:\\Users\\Example\\AppData\\Local\\Packages\\OpenAI.Codex_fixture\\LocalCache\\NotesWorkspace\\note.txt';
+   for(const scenario of ['hidden delayed failure','quiet delayed failure','visible failure then Alt+Q']){
+    noteMode='panel';noteVisible=true;quietApplyRequest=null;
+    const before='Keep the recoverable fixture note',after=before+'\nA completed revision';NotepadEditor.applyContext({note:{id:'note-test',text:before,html:'',revision:0}});
+    const proposal=noteMessage({type:'NOTE_AI_PROPOSE',noteId:'note-test',assistantId:'assistant-test',editRequestId:'feedback-'+scenario,expectedText:before,expectedHtml:'',expectedRevision:0,text:after});
+    const failure={type:'NOTE_AI_FAILED',noteId:'note-test',editRequestId:'feedback-'+scenario,error:rawFailure,revision:0};let visibleDetails;
+    if(scenario==='visible failure then Alt+Q'){
+     noteMessage(failure);visibleDetails=document.querySelector('#error').textContent;
+     document.dispatchEvent(new KeyboardEvent('keydown',{key:'q',code:'KeyQ',altKey:true,bubbles:true}));
+    }else{
+     if(scenario==='hidden delayed failure'){noteVisible=false;NotepadEditor.concealAIError();}else noteMode='quiet';
+     noteMessage(failure);
+    }
+    const banner={text:document.querySelector('#error').textContent,hidden:document.querySelector('#error').hidden},retained=editor.value;
+    await NotepadEditor.flush();
+    results.push({feedback:scenario,accepted:proposal?.accepted,banner,retained,expectedText:after,saved:noteSavedDrafts.at(-1)?.text,visibleDetails,rawFailure});
+   }
+   noteMode='panel';noteVisible=false;
+   document.dispatchEvent(new KeyboardEvent('keydown',{key:'p',code:'KeyP',ctrlKey:true,bubbles:true}));
+   const ordinaryError={text:document.querySelector('#error').textContent,hidden:document.querySelector('#error').hidden};NotepadEditor.concealAIError();
+   results.push({feedback:'ordinary editor warning survives hiding',before:ordinaryError,after:{text:document.querySelector('#error').textContent,hidden:document.querySelector('#error').hidden}});
+   const legacyBanner=document.querySelector('#error');legacyBanner.textContent='ChatGPT sign-in failed. Open the Reference sidebar to reconnect.';legacyBanner.hidden=false;NotepadEditor.concealAIError();
+   results.push({feedback:'external account banner is cleared when hiding',banner:{text:legacyBanner.textContent,hidden:legacyBanner.hidden}});
    noteMode='panel';quietApplyRequest=null;
+   noteVisible=true;
    const baseline={id:'note-test',text:'Keep my note\n',html:'',revision:0};NotepadEditor.applyContext({note:baseline});
    const m={type:'NOTE_AI_PROPOSE',noteId:baseline.id,assistantId:'assistant-test',editRequestId:'guard-test',expectedText:baseline.text,expectedHtml:'',expectedRevision:0,text:'Replacement'};
    noteVisible=false;results.push({guard:'hidden',reply:noteMessage(m),text:editor.value});noteVisible=true;
@@ -69,6 +93,12 @@ async function main(){
    return results;
   });
   for(const result of results){
+   if(result.feedback){
+    if(result.feedback==='ordinary editor warning survives hiding'){assert.equal(result.before.hidden,false);assert.match(result.before.text,/Save as/);assert.deepEqual(result.after,result.before);}
+    else if(result.feedback==='external account banner is cleared when hiding'){assert.deepEqual(result.banner,{text:'',hidden:true});}
+    else{assert.equal(result.accepted,true);assert.equal(result.retained,result.expectedText);assert.equal(result.saved,result.expectedText);assert.equal(result.banner.hidden,false);assert.match(result.banner.text,/file update could not be saved/i);assert.doesNotMatch(result.banner.text,/\b(?:codex|chatgpt|openai|AI|Reference)\b|Alt\+W|C:\\|Packages/i);if(result.feedback==='visible failure then Alt+Q')assert.equal(result.visibleDetails,result.rawFailure);}
+    console.log('PASS '+result.feedback+' preserves the note and discreet failure feedback');continue;
+   }
    if(result.guard){assert.equal(result.reply?.accepted,false);assert.equal(result.reply?.reason,Object.hasOwn(result,'expectedReason')?result.expectedReason:result.guard==='hidden'?'hidden':'local_changes');assert.equal(result.text,result.expectedText??(result.guard==='hidden'?'Keep my note\n':'Manual edit'));console.log('PASS '+result.guard+' note refuses automatic revision');continue;}
    assert.equal(result.reply?.accepted,true,result.label+' append '+JSON.stringify(result.suffix)+' '+JSON.stringify(result));
    assert.equal(result.after.text,result.before.text+result.suffix);assert.deepEqual(result.nativeUndo,result.before,result.label+' native Undo');assert.deepEqual(result.nativeRedo,result.after,result.label+' native Redo');assert.deepEqual(result.aiUndo,result.before,result.label+' AI Undo');

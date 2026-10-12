@@ -16,19 +16,37 @@ async function refresh() {
   $('current-row').hidden = !result.hasPassphrase;
   $('remove-passphrase').hidden = !result.hasPassphrase;
   $('save-passphrase').textContent = result.hasPassphrase ? 'Change passphrase' : 'Set passphrase';
-  const labels = {'privacy-now': 'Hide and disable all AI panels', 'resume-workspace': 'Open the AI panel in this notepad', 'toggle-paper': 'Open panel connection options', 'open-settings': 'Open these settings'};
+  const desktop=!!globalThis.NoteDesktop;
+  const shortcuts=[
+    {name:'privacy-now',label:'Hide all AI controls and indicators'},
+    {name:'resume-workspace',label:'Open the Reference sidebar'},
+    {shortcut:'Alt+S',label:'Open or close Notes for self'},
+    {shortcut:'Alt+I',label:'Insert a completed compact reply or note revision once'},
+    {name:desktop?'next-model':'toggle-paper',label:'Select the next model'},
+    {shortcut:'Alt+-',label:'Select the previous model'},
+    {shortcut:'Alt+=',label:'Select the next model (alternative)'},
+    {shortcut:'Alt+1',label:'Thinking: Low'},
+    {shortcut:'Alt+2',label:'Thinking: Medium'},
+    {shortcut:'Alt+3',label:'Thinking: High'},
+    {shortcut:'Alt+4',label:'Thinking: Extra high'},
+    {shortcut:'Alt+5',label:'Thinking: Maximum'},
+    {shortcut:'Alt+6',label:'Thinking: Ultra'},
+    {shortcut:'Alt+Shift+M',label:'Select the next model (legacy shortcut)'},
+    {shortcut:'Alt+, / Alt+.',label:'Previous / next model (alternatives)'},
+    {name:'open-settings',label:'Open these settings'}
+  ];
   const list = $('shortcuts'); list.replaceChildren();
   const missing = [];
-  for (const [name, label] of Object.entries(labels)) {
-    const command = result.commands.find(c => c.name === name);
+  for (const {name,label,shortcut} of shortcuts) {
+    const command = name?result.commands.find(c => c.name === name):null;
     const row = document.createElement('div'); row.className = 'shortcut';
     const text = document.createElement('span'); text.textContent = label;
-    const key = document.createElement('kbd'); key.textContent = command?.shortcut || 'NOT ASSIGNED';
+    const key = document.createElement('kbd'); key.textContent = shortcut || command?.shortcut || 'NOT ASSIGNED';
     row.append(text, key); list.append(row);
-    if (!command?.shortcut) missing.push(label);
+    if (name&&!command?.shortcut) missing.push(label);
   }
   $('shortcut-warning').hidden = missing.length === 0;
-  $('shortcut-warning').textContent = 'Assign the missing shortcuts before relying on the cover. Another extension or browser command may already use them.';
+  $('shortcut-warning').textContent = desktop?'A desktop shortcut is unavailable. Reopen the installed program before relying on it.':'Assign the missing browser commands before relying on the cover. Another extension or browser command may already use them. The additional editor shortcuts are fixed.';
 }
 $('preferences').addEventListener('submit', async event => {
   event.preventDefault();

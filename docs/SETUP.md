@@ -1,4 +1,4 @@
-# Set up Notes Workspace 5.3.2
+# Set up Notes Workspace 5.3.3
 
 A Windows notepad with an optional Codex sidebar and a small **Notes for self** box. Ordinary notes work without signing in. For AI, each person connects **their own ChatGPT account**; no account, subscription, chat history or credentials are shared with the download.
 
@@ -56,6 +56,7 @@ Automatic application is for **completed note revisions**, not streaming text or
 | **Enter** in that box | Send and close the box. |
 | **Shift+Enter** | Add a line to the question. |
 | **Alt+W** | Open the full Reference sidebar. |
+| **Alt+M** | Select the next model in either unlocked AI view. Use the sidebar's **Options** button for connection settings. |
 | **Alt+Q** | Immediately hide the sidebar, compact box and status dot; freeze visible AI note changes. Repeated presses stay hidden. |
 | **Alt+I** | Append a completed compact reply once, or apply its permitted note revision once. No sidebar is needed. |
 | **Alt+1–6** | Select thinking level 1–6, as shown below. |

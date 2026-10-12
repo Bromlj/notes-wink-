@@ -35,7 +35,7 @@ async function createWindow(page='editor.html',epoch=desktopPrivacyEpoch){
   win.webContents.on('before-input-event',(event,input)=>{
     if(input.type!=='keyDown'||!input.alt||input.control||input.meta)return;
     if(input.key.toLowerCase()==='q'){desktopPrivacyEpoch++;void runtime.command('privacy-now').catch(()=>{});concealAuxiliary();}
-    if(input.key.toLowerCase()==='m'&&!input.shift){event.preventDefault();void runtime.command('toggle-paper',win.id).catch(()=>{});}
+    if(input.key.toLowerCase()==='m'){event.preventDefault();if(!input.isAutoRepeat)void runtime.command('next-model',win.id).catch(()=>{});}
     if(input.key.toLowerCase()==='s'&&input.shift){event.preventDefault();void openSettings();}
   });
   win.webContents.on('render-process-gone',()=>runtime.disconnect(win.id));
@@ -50,6 +50,7 @@ async function createWindow(page='editor.html',epoch=desktopPrivacyEpoch){
 }
 async function openSettings(){if(settingsWindow&&!settingsWindow.isDestroyed()){settingsWindow.show();settingsWindow.focus();return info(settingsWindow);}settingsWindow=await createWindow('options.html');return info(settingsWindow);}
 async function openAccount(){if(accountWindow&&!accountWindow.isDestroyed()){accountWindow.show();accountWindow.focus();return {};}accountWindow=await createWindow('onboarding.html');return {};}
+function desktopShortcutHelp(){return {message:'Notes Workspace shortcuts',detail:'Alt+S — Open or close Notes for self.\nAlt+W — Open the Reference sidebar.\nAlt+Q — Hide all AI controls and indicators.\nAlt+I — Insert a completed compact reply or note revision once.\nAlt+M — Select the next model.\nAlt+1–6 — Low, Medium, High, Extra high, Maximum, Ultra thinking.\nAlt+- / Alt+= — Previous / next model.\nAlt+Shift+M — Next model (also Alt+, / Alt+. for previous / next).\nAlt+Shift+S — Open settings.\n\nModel and thinking shortcuts work in either unlocked AI view and apply to the next request. Unsupported thinking levels leave the selection unchanged. While AI is hidden or locked, model and thinking shortcuts do not change the selection or reveal controls. Shortcuts require app focus; native Windows dialogs can take priority. Alt+Q never reveals AI controls.'};}
 async function createShortcut(){
   if(!app.isPackaged)throw Error('Create the shortcut from the packaged program.');
   const desktop=app.getPath('desktop'),target=path.join(desktop,'Notes Workspace.lnk');
@@ -148,7 +149,7 @@ else {
       create:async url=>info(await createWindow(new URL(url).pathname.slice(1))),
       update:async(id,changes)=>{const win=windows.get(id);if(changes.focused){win.show();win.focus();}if(typeof changes.muted==='boolean')win.webContents.setAudioMuted(changes.muted);return info(win);},
       remove:async id=>{windows.get(id)?.destroy();},
-      openSettings,openShortcuts:()=>dialog.showMessageBox({message:'Alt+W opens the panel. Alt+Q hides it. Alt+M opens its options. Alt+Shift+S opens settings.',detail:'These shortcuts work while the program has focus. Native Windows dialogs can take priority.'}),
+      openSettings,openShortcuts:()=>dialog.showMessageBox(desktopShortcutHelp()),
       save:async(id,options)=>{const staged=exportsByWindow.get(id);if(!staged||staged.url!==options.url)throw Error('The document export expired. Try again.');const r=await dialog.showSaveDialog(windows.get(id),{title:'Save as',defaultPath:path.basename(options.filename)});if(r.canceled)return 0;await fs.promises.writeFile(r.filePath,staged.bytes);return 1;}
     }});
     await createWindow();if(process.argv.includes('--create-shortcut'))await createShortcut();
@@ -159,4 +160,4 @@ app.on('before-quit',event=>{
   if(quitting)return;event.preventDefault();if(closing)return;closing=true;
   Promise.all([...windows.values()].filter(w=>w.webContents.getURL()===ORIGIN+'/editor.html').map(w=>w.webContents.executeJavaScript('Promise.all([globalThis.NotepadEditor?.flush(),globalThis.NotepadAssistant?.beforeNoteSwitch()])').catch(()=>{}))).then(()=>runtime?.close()).finally(()=>{service?.close();quitting=true;app.quit();});
 });
-module.exports={diagnostics:()=>({appId:APP_ID,executablePath,iconPath,dataRoot,version:'5.3.2'})};
+module.exports={diagnostics:()=>({appId:APP_ID,executablePath,iconPath,dataRoot,version:'5.3.3'})};

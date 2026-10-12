@@ -1,4 +1,4 @@
-NOTES WORKSPACE 5.3.2 — SHARE WITH FRIENDS
+NOTES WORKSPACE 5.3.3 — SHARE WITH FRIENDS
 
 Share this repository or the ORIGINAL release ZIP:
 https://github.com/Bromlj/notes-wink-
@@ -56,8 +56,10 @@ A configured restore passphrase applies to both views.
 
 In either unlocked view, Alt+1-6 selects Low, Medium, High, Extra high, Maximum
 or Ultra thinking when supported. Alt+minus / Alt+equals cycles previous / next
-model. Comma/period also works; Alt+Shift+M selects the next model. The numeric
-marker means model position / thinking level; 0 is another catalog default.
+model. Comma/period also works; Alt+Shift+M selects the next model.
+Alt+M also selects the next model in either unlocked view. Use Options for
+connection settings; Alt+M never opens them.
+The numeric marker means model position / thinking level; 0 is another catalog default.
 The sidebar shows actual names. Both views stay synchronized, and choices apply
 to the next request. Shortcuts require app focus; Windows dialogs can take it.
 
@@ -86,6 +88,6 @@ Processes, recording, system inspection and account pages can reveal use.
 Share the original clean release, not your data folders or backups.
 
 Independent software, not affiliated with Microsoft or OpenAI. Third-party
-licenses are included. TEST_REPORT.md records 360 checks for 5.3.2 and their
+licenses are included. TEST_REPORT.md records 442 checks for 5.3.3 and their
 limits; results do not guarantee every account, Windows policy or future
 service version behaves identically.

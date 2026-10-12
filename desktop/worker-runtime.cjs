@@ -18,7 +18,7 @@ const waitForRetry = milliseconds => new Promise(resolve => setTimeout(resolve,m
 const COMMANDS = Object.freeze([
   { name: 'privacy-now', shortcut: 'Alt+Q' },
   { name: 'resume-workspace', shortcut: 'Alt+W' },
-  { name: 'toggle-paper', shortcut: 'Alt+M' },
+  { name: 'next-model', shortcut: 'Alt+M' },
   { name: 'open-settings', shortcut: 'Alt+Shift+S' }
 ]);
 
@@ -153,7 +153,7 @@ function createRuntime({ uiRoot, dataFile, native, windows, storageIO=fs.promise
         assertOpen();
         if (url === 'chrome://extensions/shortcuts') {
           if (typeof windows.openShortcuts === 'function') return windows.openShortcuts();
-          throw Error('Desktop shortcuts are Alt+Q, Alt+W, Alt+M and Alt+Shift+S.');
+          throw Error('Desktop shortcuts are fixed: Alt+S opens Notes for self, Alt+W opens Reference, Alt+Q hides AI controls, Alt+I inserts a completed result, Alt+M selects the next model, Alt+- / Alt+= cycles models, Alt+1–6 selects thinking, Alt+Shift+M also selects the next model, and Alt+Shift+S opens settings.');
         }
         if (![ORIGIN + '/editor.html', ORIGIN + '/options.html'].includes(url)) throw Error('Unsupported local page.');
         return clone(await windows.create(url));

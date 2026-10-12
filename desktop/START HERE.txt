@@ -1,4 +1,4 @@
-NOTES WORKSPACE 5.3.2 — WINDOWS x64
+NOTES WORKSPACE 5.3.3 — WINDOWS x64
 
 START HERE
 1. Right-click the downloaded ZIP and choose Extract All.
@@ -73,6 +73,8 @@ In either unlocked view, Alt+1-6 selects:
 Unsupported levels leave your current selection unchanged. Low can be useful
 for simple requests; higher thinking levels can take longer.
 Alt+minus / Alt+equals selects the previous / next account-provided model.
+Alt+M selects the next model in either view. Use the sidebar Options button
+for connection settings; Alt+M never opens those settings.
 Alt+comma / Alt+period also works; Alt+Shift+M selects the next model.
 The numeric title marker means model position / thinking level. For example,
 3/2 means model number 3 and Medium thinking. Level 0 is a catalog default
@@ -131,7 +133,7 @@ the vendor Electron runtime's embedded icon and metadata; its bytes are not
 resource-modified. This release has no custom signing certificate, and Windows
 reputation or managed-computer policies can vary.
 
-TEST_REPORT.md records the 5.3.2 checks and their limits: 195 helper tests,
-64 renderer checks and 101 packaged-app checks, 360 in total. Runtime licenses
+TEST_REPORT.md records the 5.3.3 checks and their limits: 201 helper tests,
+69 renderer checks and 172 packaged-app checks, 442 in total. Runtime licenses
 and notices are included. Independent software, not affiliated with Microsoft
 or OpenAI; this is not Microsoft Notepad or the official Codex desktop UI.

@@ -37,6 +37,7 @@ The two small checkboxes have no visible labels. **The first permits the next re
 | **Alt+I** | Append a completed compact reply once, or apply its permitted note revision once, with Undo. |
 | **Alt+Q** | Hide every AI control and indicator, and freeze visible AI note changes. Accepted work continues. |
 | **Alt+W** | Open the full Reference sidebar, with distinct colours and labels for your text and Codex replies. |
+| **Alt+M** | Select the next model in either unlocked AI view. Use **Options** for connection settings. |
 | **Alt+1–6** | Low, Medium, High, Extra high, Maximum or Ultra thinking, when supported. |
 | **Alt+- / Alt+=** | Previous / next model. Both unlocked views stay synchronized. |
 | **Alt+Shift+S** | Settings, optional restore passphrase, backups and desktop shortcut creation. |
@@ -83,12 +84,12 @@ The ZIP and checksum are written to `release/`. The build copies explicit app fi
 
 ## Tests
 
-The 5.3.2 update passed **360 checks: 195 helper tests, 64 renderer checks and 101 packaged-app checks**. These cover compact note permissions, manual and automatic application, hidden completion, conflicts, rich Undo, model shortcuts, account isolation and Windows icon handling. The [test report](desktop/TEST_REPORT.md) records the measured scope and limits.
+The 5.3.3 update passed **442 checks: 201 helper tests, 69 renderer checks and 172 packaged-app checks**. These cover compact note permissions, manual and automatic application, hidden completion, conflicts, rich Undo, model shortcuts, account isolation and Windows icon handling. The [test report](desktop/TEST_REPORT.md) records the measured scope and limits.
 
 After installing source dependencies, run helper tests without signing in:
 
 ```powershell
-node --test tests/core.test.cjs tests/direct.test.cjs tests/agent.test.cjs tests/desktop-service.test.cjs tests/desktop-backup.test.cjs tests/desktop-storage.test.cjs tests/desktop-note-files.test.cjs tests/desktop-direct-host.test.cjs tests/desktop-note-file-races.test.cjs tests/note-host.test.cjs tests/worker-note-edit.test.cjs tests/desktop-icon.test.cjs
+node --test tests/core.test.cjs tests/direct.test.cjs tests/agent.test.cjs tests/desktop-service.test.cjs tests/desktop-backup.test.cjs tests/desktop-storage.test.cjs tests/desktop-note-files.test.cjs tests/desktop-direct-host.test.cjs tests/desktop-note-file-races.test.cjs tests/note-host.test.cjs tests/worker-note-edit.test.cjs tests/desktop-icon.test.cjs tests/desktop-shortcuts.test.cjs
 ```
 
 For packaged application tests, build the app and install the test driver first:
@@ -105,6 +106,7 @@ node tests/desktop-quiet-e2e.cjs
 node tests/desktop-quiet-note-e2e.cjs
 node tests/desktop-quiet-auto-e2e.cjs
 node tests/desktop-icon-e2e.cjs
+node tests/desktop-consistency-e2e.cjs
 ```
 
 These scripts use disposable profiles and text files. `desktop-first-run.cjs` uses the real bundled Codex runtime with an empty sign-in profile; deterministic editor tests use the included app-server fixture. Generated test profiles, logs and screenshots are ignored by Git. The two documentation pictures above and in the setup guide are explicit synthetic examples.

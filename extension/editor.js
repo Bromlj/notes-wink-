@@ -20,12 +20,27 @@
   let fileState = null;
   let fileWarning = '';
   let fileLoading = null;
+  let errorIsAI = false;
   const desktop = !!globalThis.NoteDesktop;
   try { tabs = JSON.parse(sessionStorage.getItem('open-notes') || '[]').filter(t=>typeof t.id==='string' && typeof t.name==='string'); } catch { tabs = []; }
   async function request(type, data = {}) {
     return NoteConnection.request(type,data);
   }
-  function error(message) { $('error').textContent = message; $('error').hidden = !message; }
+  const neutralUpdateError='A file update could not be saved. Your displayed text and recovery draft are kept.';
+  function error(message,{ai=false}={}) {
+    errorIsAI=!!message&&ai;
+    const panelVisible=globalThis.NotepadAssistant?.canApplyNote?.()??globalThis.NotepadAssistant?.visible?.();
+    $('error').textContent=errorIsAI&&!panelVisible?neutralUpdateError:message;
+    $('error').hidden=!message;
+  }
+  function concealAIError(){
+    const box=$('error');if(box.hidden)return;
+    if(errorIsAI){box.textContent=neutralUpdateError;return;}
+    // Restore failures can originate in the assistant UI rather than this
+    // editor. Remove their identifying banner without clearing ordinary
+    // editor errors, such as a failed save or unsupported file type.
+    if(/\b(?:codex|chatgpt|openai|AI)\b/i.test(box.textContent)){box.textContent='';box.hidden=true;}
+  }
   function status(message) { $('save-status').textContent = message === 'Saved locally' ? '' : message; $('save-status').title = message; }
   function ordinaryFileMessage(message){return /\b(?:codex|AI|task|turn)\b/i.test(String(message))?'File updates are in progress. Your recovery draft is kept. Wait for them to finish, then reload the file or use Save as.':String(message||'');}
   function renderFileState(){
@@ -115,7 +130,7 @@
     editor.disabled = false; status('Saved locally'); error(''); updatePosition();
   }
   function applyContext(result){applyNote(result.note);if(result.file)acceptFile(result.file,result.fileError||'');else if(desktop)void ensureFile().catch(e=>{fileWarning=e.message;renderFileState();});if(result.assistant)globalThis.NotepadAssistant?.noteContext(result.assistant);}
-  globalThis.NotepadEditor=Object.freeze({applyContext,flush,canUndoAI,undoAI,ensureFile,insertReference,file:()=>fileState?{...fileState}:null,fileGuard,openFile:()=>fileAction('NOTE_FILE_OPEN'),saveFile:()=>fileAction('NOTE_FILE_SAVE'),saveFileAs:()=>fileAction('NOTE_FILE_SAVE_AS')});
+  globalThis.NotepadEditor=Object.freeze({applyContext,flush,canUndoAI,undoAI,ensureFile,insertReference,concealAIError,file:()=>fileState?{...fileState}:null,fileGuard,openFile:()=>fileAction('NOTE_FILE_OPEN'),saveFile:()=>fileAction('NOTE_FILE_SAVE'),saveFileAs:()=>fileAction('NOTE_FILE_SAVE_AS')});
   async function insertReference(text,{noteId}={}){
     const assistant=globalThis.NotepadAssistant,token=assistant?.token?.();
     const permitted=()=>!!note&&!switchingNote&&!aiCommit&&note.id===noteId&&assistant?.visible()&&!assistant?.working?.()&&assistant?.token?.()===token;
@@ -458,6 +473,7 @@
   document.addEventListener('keydown', event => {
     if (event.altKey && !event.ctrlKey && !event.shiftKey && !event.metaKey && event.code === 'KeyQ') {
       globalThis.NotepadAssistant?.hide(false);
+      concealAIError();
       event.preventDefault(); event.stopImmediatePropagation(); cancelRestore(); closeMenus();
       for (const d of document.querySelectorAll('dialog[open]')) d.close('cancel');
       void request('HIDE').catch(() => undefined); editor.focus(); return;
@@ -499,7 +515,7 @@
         if(note?.id===message.noteId){
           if(Number.isSafeInteger(message.revision)){note.revision=message.revision;note.updatedAt=message.updatedAt;}
           if(message.type==='NOTE_AI_COMMITTED'){note.text=message.text;note.html=message.html;if(message.file){acceptFile(message.file);const snapshot=aiUndo.get(note.id);if(snapshot?.requestId===message.editRequestId){snapshot.bindingId=message.file.bindingId;snapshot.afterHash=message.file.hash;}}if(pending.clock===revisionClock){dirty=false;status(desktop&&fileState?'Saved':'Saved locally');}}
-          else{dirty=true;error(message.error||'The AI revision could not be saved. Your shown text is retained.');queueSave();}
+          else{dirty=true;error(message.error||'The AI revision could not be saved. Your shown text is retained.',{ai:true});queueSave();}
         }
         aiCommit=null;pending.release();undoChanged();
       }

@@ -623,8 +623,8 @@ chrome.commands.onCommand.addListener((command, currentTab) => {
     if (!tab || tab.url?.split(/[?#]/)[0]!==CHAT) return;
     if (!(await state(tab.id)).workspace) return;
     if (command === 'resume-workspace') { const s = await state(tab.id); if (s.editorFrame != null) await send(tab.id,{type:'REQUEST_RESTORE'},s.editorFrame); }
-    if (command === 'toggle-paper') {
-      const s = await state(tab.id); if (s.private === false) await send(tab.id,{type:'AI_OPEN_OPTIONS'},s.editorFrame);
+    if (command === 'next-model' || command === 'toggle-paper') {
+      const s = await state(tab.id); if (s.private === false) await send(tab.id,{type:'AI_NEXT_MODEL'},s.editorFrame);
     }
   }).catch(() => { /* Fail closed; a rejected restore leaves the notepad visible. */ });
 });

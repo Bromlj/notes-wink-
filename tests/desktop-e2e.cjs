@@ -33,7 +33,7 @@ async function close(){if(application){await application.close();application=nul
 // Chromium's CDP keyboard dispatch does not emit Electron before-input-event.
 // Use Electron's public input API for the app-level native shortcut boundary.
 async function nativeAlt(target,key,shift=false){await application.evaluate(({BrowserWindow},{url,key,shift})=>{const win=BrowserWindow.getAllWindows().find(w=>w.webContents.getURL()===url);if(!win)throw Error('Test window not found.');const modifiers=shift?['alt','shift']:['alt'];win.webContents.sendInputEvent({type:'keyDown',keyCode:key.toUpperCase(),modifiers});win.webContents.sendInputEvent({type:'keyUp',keyCode:key.toUpperCase(),modifiers});},{url:target.url(),key,shift});}
-async function openSettings(){const opened=application.waitForEvent('window');await nativeAlt(page,'s',true);const settings=await opened;settings.setDefaultTimeout(12000);settings.on('pageerror',e=>errors.push(e.message));await settings.waitForFunction(()=>document.querySelectorAll('#shortcuts kbd').length===4);return settings;}
+async function openSettings(){const opened=application.waitForEvent('window');await nativeAlt(page,'s',true);const settings=await opened;settings.setDefaultTimeout(12000);settings.on('pageerror',e=>errors.push(e.message));await settings.waitForFunction(()=>document.querySelectorAll('#shortcuts kbd').length===16);return settings;}
 async function calls(){const file=path.join(currentData,'Conversations','fixture-calls.jsonl');return fs.existsSync(file)?fs.readFileSync(file,'utf8').trim().split('\n').filter(Boolean).map(JSON.parse):[];}
 (async()=>{
  assert(fs.existsSync(EXE),'Build the desktop executable first: '+EXE);
@@ -72,7 +72,7 @@ async function calls(){const file=path.join(currentData,'Conversations','fixture
   // navigation as pending. A deliberate local reload clears the driver state.
   await page.goto('notes://app/editor.html',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.notepadReady);
   await reveal();
-  await check('Alt+M opens the panel options from the native window',async()=>{await nativeAlt(page,'m');await page.waitForFunction(()=>!document.querySelector('#assistant-settings').hidden);});
+  await check('Alt+M selects the next model without opening options from the native window',async()=>{const before=await page.locator('#assistant-model').inputValue();await nativeAlt(page,'m');await page.waitForFunction(before=>document.querySelector('#assistant-model').value!==before,before);assert.equal(await page.locator('#assistant-settings').isHidden(),true);await page.locator('#assistant-options').click();});
   await check('project Browse reaches the native folder picker and fills the chosen path',async()=>{
    await application.evaluate(({dialog},folder)=>{globalThis.__desktopE2EFolderOptions=null;dialog.showOpenDialog=async(_win,options)=>{globalThis.__desktopE2EFolderOptions=options;return {canceled:false,filePaths:[folder]};};},alpha);
    await page.getByRole('button',{name:'Browse folder…',exact:true}).click();await page.waitForFunction(folder=>document.querySelector('#assistant-project').value===folder,alpha);const chosen=await application.evaluate(()=>globalThis.__desktopE2EFolderOptions);assert(chosen.properties.includes('openDirectory'));

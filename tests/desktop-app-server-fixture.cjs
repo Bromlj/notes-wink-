@@ -3,6 +3,7 @@
 // Only deterministic test data is logged. No network or account tokens are used.
 const fs=require('node:fs'),path=require('node:path'),readline=require('node:readline');
 const threads=new Map(),turns=new Map(),approvals=new Map();let threadNumber=0,turnNumber=0,approvalNumber=9000,sandboxReady=process.env.NOTES_FIXTURE_SANDBOX_UNCONFIGURED!=='1';
+const fixtureEfforts=process.env.NOTES_FIXTURE_ALL_EFFORTS==='1'?['low','medium','high','xhigh','max','ultra'].map(reasoningEffort=>({reasoningEffort})):[{reasoningEffort:'low'},{reasoningEffort:'high'}];
 const log=p=>fs.appendFileSync(path.join(process.cwd(),'fixture-calls.jsonl'),JSON.stringify(p)+'\n');
 const write=p=>process.stdout.write(JSON.stringify(p)+'\n');
 const respond=(id,result)=>write({id,result});
@@ -82,7 +83,7 @@ readline.createInterface({input:process.stdin}).on('line',line=>{
   case 'account/logout':respond(m.id,{});break;
   case 'windowsSandbox/readiness':respond(m.id,{status:sandboxReady?'ready':'notConfigured'});break;
   case 'windowsSandbox/setupStart':respond(m.id,{started:true});setTimeout(()=>{sandboxReady=true;notify('windowsSandbox/setupCompleted',{mode:'elevated',success:true,error:null});},150);break;
-  case 'model/list':respond(m.id,{data:[{id:'fixture-codex',model:'fixture-codex',displayName:'Fixture Codex',isDefault:true,inputModalities:['text','image'],defaultReasoningEffort:'low',supportedReasoningEfforts:[{reasoningEffort:'low'},{reasoningEffort:'high'}]},{id:'fixture-codex-second',model:'fixture-codex-second',displayName:'Fixture Second',isDefault:false,inputModalities:['text','image'],defaultReasoningEffort:'high',supportedReasoningEfforts:[{reasoningEffort:'low'},{reasoningEffort:'high'}]}],nextCursor:null});break;
+  case 'model/list':respond(m.id,{data:[{id:'fixture-codex',model:'fixture-codex',displayName:'Fixture Codex',isDefault:true,inputModalities:['text','image'],defaultReasoningEffort:'low',supportedReasoningEfforts:fixtureEfforts},{id:'fixture-codex-second',model:'fixture-codex-second',displayName:'Fixture Second',isDefault:false,inputModalities:['text','image'],defaultReasoningEffort:'high',supportedReasoningEfforts:[{reasoningEffort:'low'},{reasoningEffort:'high'}]}],nextCursor:null});break;
   case 'configRequirements/read':respond(m.id,{requirements:null});break;
   case 'skills/list':respond(m.id,{data:[{cwd:p.cwds?.[0],skills:[{name:'fixture-skill',description:'Disposable fixture skill',path:path.join(process.cwd(),'SKILL.md'),enabled:true}],errors:[]}]});break;
   case 'mcpServerStatus/list':respond(m.id,{data:[],nextCursor:null});break;
