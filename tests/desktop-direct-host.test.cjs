@@ -20,7 +20,7 @@ test('missing actual file grants fail before a turn and cannot fall back to a di
 
 test('a completed direct-note task with no file changes reports an explicit unchanged outcome',async t=>{
  const f=fixture(t),bound=await f.noteFiles.ensure(randomUUID(),'Original note'),started=await f.send({noteEdit:descriptor(bound)}),turn=f.host.turns.get(started.threadId);
- const input=f.calls.find(c=>c.method==='turn/start').params.input[0].text;assert.match(input,/For a small note-only edit/);assert.match(input,/Verify the requested change in this authoritative file/);
+ const input=f.calls.find(c=>c.method==='turn/start').params.input[0].text;assert.match(input,/For a small note-only edit/);assert.match(input,/folder containing this document is included among the writable roots/);assert.match(input,/Verify the requested change in this authoritative file/);
  f.host.finish(started.threadId,{status:'completed',items:[{id:'answer',type:'agentMessage',text:'A reply that did not edit the file.'}]});
  const final=f.events.at(-1);assert.equal(final.status,'completed');assert.equal(final.noteEdit,undefined);assert.deepEqual(final.noteEditOutcome,{requestId:turn.requestId,noteId:bound.noteId,baseRevision:3,status:'unchanged',changed:false,sequence:0});assert.equal(fs.readFileSync(bound.path,'utf8'),'Original note');
 });

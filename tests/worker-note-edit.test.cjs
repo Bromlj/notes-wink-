@@ -10,13 +10,15 @@ async function fixture(initial){
   const folder=fs.mkdtempSync(path.join(__dirname,'worker-note-edit-'));
   const dataFile=path.join(folder,'notes.json');if(initial)fs.writeFileSync(dataFile,JSON.stringify(initial));
   const tab={id:1,windowId:1,url:ORIGIN+'/editor.html',active:true,mutedInfo:{muted:false},autoDiscardable:false};
-  const calls=[],messages=[],latest=new Map(),seen=new Map(),nativeDelays=new Map();let clock=0,visible=false,doc,latch=null,proposalMode='accept',delayUntil=0,delivery=Promise.resolve(),restoreToken=null;
+  const calls=[],messages=[],latest=new Map(),seen=new Map(),nativeDelays=new Map();let clock=0,visible=false,doc,latch=null,proposalMode='accept',delayUntil=0,delivery=Promise.resolve(),restoreToken=null,nativeFile=null;
   const windows={async get(id){return id===1?tab:null;},async list(){return [tab];},async create(){return tab;},async update(id,changes){Object.assign(tab,changes);return tab;},async remove(){},async openSettings(){},async save(){return 1;}};
   const native=async(action,data)=>{
     calls.push({action,data});
     if(nativeDelays.has(action))await pause(nativeDelays.get(action));
     if(action==='catalog')return {ok:true,defaultProject:folder,models:[{model:'fixture',isDefault:true,defaultReasoningEffort:'low',supportedReasoningEfforts:[{reasoningEffort:'low'}]}]};
     if(action==='send')return {ok:true,threadId:'fixture-thread',turnId:'fixture-turn'};
+    if(action==='notePrepare'&&nativeFile){if(data.bindingId!==nativeFile.bindingId||data.expectedHash!==nativeFile.hash)throw Error('Fixture file changed before submission.');return {ok:true,file:{...nativeFile}};}
+    if(action==='noteVerify'&&nativeFile){if(data.bindingId!==nativeFile.bindingId||data.expectedHash!==nativeFile.hash)throw Error('Fixture file changed on disk.');return {ok:true,file:{...nativeFile}};}
     if(action==='updates'){const updates=data.ids.map(id=>latest.get(id)).filter(Boolean);for(const update of updates)seen.set(update.requestId,update.at);return {ok:true,updates,missing:[]};}
     return {ok:true};
   };
@@ -40,8 +42,8 @@ async function fixture(initial){
   const assistant=()=>runtime.snapshot()['assistant:'+assistantId];
   const note=()=>runtime.snapshot()['note:'+doc.id];
   const publish=async(id,edit,status='working',extra={})=>{const at=++clock;latest.set(id,{requestId:id,at,status,text:'Fixture answer',noteEdit:edit,...extra});await until(()=>seen.get(id)===at,'native update polled');await pause(10);await request('AI_READY');};
-  const send=async()=>{const id=randomUUID(),response=await request('AI_SEND',{id,text:'Revise this note.'});assert.equal(response.ok,true,response.error);await until(()=>calls.some(x=>x.action==='send'&&x.data.requestId===id),'native send');return id;};
-  return {runtime,calls,messages,request,assistant,note,publish,send,folder,get doc(){return doc;},get assistantId(){return assistantId;},get visible(){return visible;},get token(){return restoreToken;},get latch(){return latch;},async reveal(mode='panel'){restoreToken=randomUUID();const r=await request('RESUME',{token:restoreToken,mode});assert.equal(r.ok,true,r.error);return r;},async hide(){const r=await request('HIDE');assert.equal(r.ok,true,r.error);},async manual(text){doc.text=text;doc.html='<p>'+text+'</p>';const r=await request('SAVE_NOTE',{note:doc});assert.equal(r.ok,true,r.error);doc={...r.note};},async newNote(text=''){const r=await request('NEW_NOTE',{text});assert.equal(r.ok,true,r.error);doc={...r.note};assistantId=r.assistant.id;return r;},setProposalMode(value){proposalMode=value;},delayNative(action,ms){nativeDelays.set(action,ms);},delayRenderer(ms){delayUntil=Date.now()+ms;},async close(){await delivery;await runtime.close();const target=path.resolve(folder),root=path.resolve(__dirname);assert(target.startsWith(root+path.sep));fs.rmSync(target,{recursive:true,force:true});}};
+  const send=async(data={})=>{const id=randomUUID(),response=await request('AI_SEND',{id,text:'Revise this note.',...data});assert.equal(response.ok,true,response.error);await until(()=>calls.some(x=>x.action==='send'&&x.data.requestId===id),'native send');return id;};
+  return {runtime,calls,messages,request,assistant,note,publish,send,folder,get doc(){return doc;},get assistantId(){return assistantId;},get visible(){return visible;},get token(){return restoreToken;},get latch(){return latch;},setFile(file={}){nativeFile={noteId:doc.id,bindingId:randomUUID(),hash:'a'.repeat(64),...nativeFile,...file};return {...nativeFile};},async reveal(mode='panel'){restoreToken=randomUUID();const r=await request('RESUME',{token:restoreToken,mode});assert.equal(r.ok,true,r.error);return r;},async hide(){const r=await request('HIDE');assert.equal(r.ok,true,r.error);},async manual(text){doc.text=text;doc.html='<p>'+text+'</p>';const r=await request('SAVE_NOTE',{note:doc});assert.equal(r.ok,true,r.error);doc={...r.note};},async newNote(text=''){const r=await request('NEW_NOTE',{text});assert.equal(r.ok,true,r.error);doc={...r.note};assistantId=r.assistant.id;return r;},setProposalMode(value){proposalMode=value;},delayNative(action,ms){nativeDelays.set(action,ms);},delayRenderer(ms){delayUntil=Date.now()+ms;},async close(){await delivery;await runtime.close();const target=path.resolve(folder),root=path.resolve(__dirname);assert(target.startsWith(root+path.sep));fs.rmSync(target,{recursive:true,force:true});}};
 }
 test('note editing stages preserve privacy, conflicts and note/chat bindings',async t=>{
   const f=await fixture();t.after(()=>f.close());await f.reveal();
@@ -153,4 +155,87 @@ test('passphrase unlock retains quiet mode and hidden state cannot bypass its lo
 test('panic cancels a quiet restore queued behind another request and an in-flight unlock',async t=>{
   const f=await fixture();t.after(()=>f.close());await f.reveal();f.delayNative('catalog',120);const blocked=f.request('AI_CONTROLS',{operation:'choose',model:'fixture',effort:'low'});await until(()=>f.calls.some(x=>x.action==='catalog'),'catalog blocking the worker');const quiet=f.request('RESUME',{token:randomUUID(),mode:'quiet'});await f.hide();await blocked;assert.equal((await quiet).ok,false);assert.equal(f.runtime.enabled(1),false);assert.equal(f.messages.filter(m=>m.type==='AI_MODE'&&m.mode==='quiet').length,0);
   const locked=await fixture(passwordFixture('quiet-passphrase'));t.after(()=>locked.close());await locked.reveal('quiet');const unlocking=locked.request('UNLOCK',{token:locked.token,password:'quiet-passphrase'});await pause(1);await locked.hide();assert.equal((await unlocking).ok,false);assert.equal(locked.runtime.enabled(1),false);assert.equal(locked.messages.some(m=>m.type==='AI_MODE'),false);
+});
+
+async function quietEditable(f,text='Private ordinary baseline'){
+  await f.reveal('quiet');await f.manual(text);
+  const selected=await f.request('AI_QUIET_NOTE_EDIT_SET',{enabled:true});assert.equal(selected.ok,true,selected.error);
+  const base={...f.doc},file=f.setFile(),id=await f.send({noteBindingId:file.bindingId,noteFileHash:file.hash});
+  return {base,file,id};
+}
+async function finishQuietEdit(f,job,text='Changed quietly',extra={}){
+  const file=f.setFile({hash:'b'.repeat(64)});
+  await f.publish(job.id,{noteId:job.base.id,baseRevision:job.base.revision,sequence:1,text,file},'completed',{noteEditOutcome:outcome(job.id,job.base,'changed',true,1),...extra});
+  return file;
+}
+function quietApply(f,job,extra={}){return f.request('AI_QUIET_NOTE_APPLY',{requestId:job.id,bindingId:job.file.bindingId,expectedHash:job.file.hash,...extra});}
+test('quiet note editing is separate, off for new notes and cannot be toggled hidden, in panel mode or during a turn',async t=>{
+  const f=await fixture();t.after(()=>f.close());assert.equal(f.assistant().quietEditNote,false);
+  assert.equal((await f.request('AI_QUIET_NOTE_EDIT_SET',{enabled:true})).ok,false);
+  await f.reveal();assert.equal((await f.request('AI_QUIET_NOTE_EDIT_SET',{enabled:true})).ok,false);
+  await f.reveal('quiet');assert.equal((await f.request('AI_QUIET_NOTE_EDIT_SET',{enabled:'true'})).ok,false);
+  const job=await quietEditable(f);assert.equal(f.assistant().editNote,false);assert.equal(f.assistant().quietEditNote,true);
+  const pending=await f.request('AI_QUIET_NOTE_EDIT_SET',{enabled:false});assert.equal(pending.ok,false);assert.match(pending.error,/active turn/);assert.equal(f.assistant().quietEditNote,true);
+  await finishQuietEdit(f,job);await f.newNote('Different note');assert.equal(f.assistant().quietEditNote,false);assert.equal(f.assistant().editNote,false);
+});
+test('quiet opt-in supplies only the current authoritative file and captures its original guarded grant',async t=>{
+  const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f,'Authoritative quiet note');
+  const sent=f.calls.find(x=>x.action==='send'&&x.data.requestId===job.id).data;
+  assert.deepEqual(sent.noteEdit,{noteId:job.base.id,text:job.base.text,revision:job.base.revision,bindingId:job.file.bindingId,fileHash:job.file.hash});
+  assert.deepEqual(f.assistant().pending.noteEditTarget,{noteId:job.base.id,baseRevision:job.base.revision,bindingId:job.file.bindingId,fileHash:job.file.hash});
+  assert.equal(f.calls.filter(x=>x.action==='notePrepare').length,1);
+  await finishQuietEdit(f,job);
+});
+test('quiet permission cannot submit an unavailable note file or stale baseline hash',async t=>{
+  const f=await fixture();t.after(()=>f.close());await f.reveal('quiet');await f.request('AI_QUIET_NOTE_EDIT_SET',{enabled:true});
+  let response=await f.request('AI_SEND',{id:randomUUID(),text:'Edit this note'});assert.equal(response.ok,false);assert.match(response.error,/file is unavailable/);
+  const file=f.setFile();response=await f.request('AI_SEND',{id:randomUUID(),text:'Edit this note',noteBindingId:file.bindingId,noteFileHash:'c'.repeat(64)});assert.equal(response.ok,false);assert.match(response.error,/changed before submission/);
+  assert.equal(f.assistant().pending,null);assert.equal(f.calls.some(x=>x.action==='send'),false);
+});
+test('quiet authorized working and hidden completion stage real file changes without modifying canonical or displayed notes',async t=>{
+  const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f),file=f.setFile({hash:'b'.repeat(64)});
+  await f.publish(job.id,{noteId:job.base.id,baseRevision:job.base.revision,sequence:1,text:'First quiet disk revision',file});
+  assert.equal(f.assistant().noteEditStage.quiet,true);assert.deepEqual(f.assistant().noteEditStage.quietGrant,f.assistant().pending.noteEditTarget);
+  assert.equal(f.note().text,job.base.text);assert.equal(f.doc.text,job.base.text);assert.equal((await quietApply(f,job)).ok,false);
+  await f.hide();const completedFile=f.setFile({hash:'c'.repeat(64)});await f.publish(job.id,{noteId:job.base.id,baseRevision:job.base.revision,sequence:2,text:'Completed quiet disk revision',file:completedFile},'completed',{noteEditOutcome:outcome(job.id,job.base,'changed',true,2)});
+  assert.equal(f.assistant().lastTurn.noteEdit,true);assert.equal(f.assistant().lastTurn.mode,'quiet');assert.equal(f.assistant().noteEditStage.text,'Completed quiet disk revision');assert.equal(f.note().text,job.base.text);assert.equal(f.doc.text,job.base.text);assert.equal(f.messages.some(m=>m.type==='NOTE_AI_PROPOSE'),false);assert.equal((await quietApply(f,job)).ok,false);
+});
+test('only explicit quiet Apply projects the completed captured revision once, with no replacement consent',async t=>{
+  const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f);await finishQuietEdit(f,job);
+  assert.equal((await f.request('AI_NOTE_SYNC')).applied,false);assert.equal((await f.request('AI_NOTE_APPLY',{force:true})).reason,'quiet');assert.equal(f.note().text,job.base.text);
+  const applied=await quietApply(f,job,{force:true});assert.equal(applied.ok,true,applied.error);assert.equal(applied.applied,true);assert.equal(f.note().text,'Changed quietly');assert.equal(f.doc.text,'Changed quietly');assert.equal(f.assistant().editNote,false);
+  const proposal=f.messages.find(m=>m.type==='NOTE_AI_PROPOSE');assert.equal(proposal.explicitQuiet,true);assert.equal(proposal.confirmed,false);assert.equal(proposal.editRequestId,job.id);
+  assert.equal(f.messages.find(m=>m.type==='NOTE_AI_COMMITTED').explicitQuiet,true);
+  assert.equal((await quietApply(f,job)).reason,'already_applied');assert.equal(f.messages.filter(m=>m.type==='NOTE_AI_PROPOSE').length,1);
+});
+test('opening the full panel or changing its independent permission never automatically applies a quiet revision',async t=>{
+  const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f);await f.reveal('panel');await f.request('AI_NOTE_EDIT_SET',{enabled:true});await f.request('AI_NOTE_EDIT_SET',{enabled:false});
+  assert(f.assistant().pending.noteEditBase);await finishQuietEdit(f,job);assert.equal(f.note().text,job.base.text);assert.equal(f.messages.some(m=>m.type==='NOTE_AI_PROPOSE'),false);
+  await f.request('AI_NOTE_EDIT_SET',{enabled:true});assert.equal((await f.request('AI_NOTE_SYNC')).reason,'quiet');assert.equal((await quietApply(f,job)).ok,false);await f.reveal('quiet');assert.equal((await quietApply(f,job)).applied,true);
+});
+test('manual edits and formatting changes cannot be overridden by quiet Apply even with force:true',async t=>{
+  const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f);await finishQuietEdit(f,job);await f.manual('My newer local edit');
+  const applied=await quietApply(f,job,{force:true});assert.equal(applied.applied,false);assert.equal(applied.reason,'local_changes');assert.equal(f.note().text,'My newer local edit');assert.equal(f.doc.text,'My newer local edit');assert.equal(f.messages.some(m=>m.type==='NOTE_AI_PROPOSE'),false);
+});
+test('quiet Apply rejects different requests, assistants, file bindings, hashes and newer disk changes',async t=>{
+  const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f);await finishQuietEdit(f,job);
+  assert.equal((await quietApply(f,job,{requestId:randomUUID()})).ok,false);assert.equal((await quietApply(f,job,{assistantId:randomUUID()})).ok,false);
+  for(const extra of [{bindingId:randomUUID()},{expectedHash:'d'.repeat(64)}]){const rejected=await quietApply(f,job,extra);assert.equal(rejected.applied,false);assert.equal(rejected.reason,'disk_changed');}
+  f.setFile({hash:'e'.repeat(64)});const rejected=await quietApply(f,job);assert.equal(rejected.applied,false);assert.equal(rejected.reason,'disk_changed');assert.equal(f.note().text,job.base.text);assert.equal(f.messages.some(m=>m.type==='NOTE_AI_PROPOSE'),false);
+});
+test('a quiet grant cannot adopt a snapshot from another binding or an ordinary panel turn',async t=>{
+  const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f),file=f.setFile({hash:'b'.repeat(64)});
+  await f.publish(job.id,{noteId:job.base.id,baseRevision:job.base.revision,sequence:1,text:'Foreign binding revision',file:{...file,bindingId:randomUUID()}},'completed');
+  assert.equal(f.assistant().noteEditStage, null);assert.equal((await quietApply(f,job)).ok,false);assert.equal(f.note().text,job.base.text);
+  await f.reveal('panel');await f.request('AI_NOTE_EDIT_SET',{enabled:true});const panelId=await f.send({noteBindingId:file.bindingId,noteFileHash:file.hash});await f.hide();await f.publish(panelId,{noteId:job.base.id,baseRevision:job.base.revision,sequence:1,text:'Panel revision',file},'completed');await f.reveal('quiet');assert.equal((await quietApply(f,{...job,id:panelId})).ok,false);
+});
+test('relinking a file converts its quiet pending stage into explicit review and removes future permission',async t=>{
+  const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f);await finishQuietEdit(f,job);
+  await f.request('NAME_NOTE_FILE',{noteId:job.base.id,name:'Different document',bindingId:randomUUID()});
+  const rejected=await quietApply(f,job);assert.equal(rejected.applied,false);assert.equal(rejected.reason,'explicit_apply');assert.equal(f.note().text,job.base.text);assert.equal(f.messages.some(m=>m.type==='NOTE_AI_PROPOSE'),false);
+  await f.request('RELOAD_NOTE_FILE',{noteId:job.base.id,name:'Different document',text:'Reloaded file',relinked:true});assert.equal(f.assistant().quietEditNote,false);assert.equal(f.assistant().editNote,false);
+});
+test('a different selected note never receives a completed quiet note revision',async t=>{
+  const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f),assistantId=f.assistantId;await finishQuietEdit(f,job);await f.newNote('Other note');await f.reveal('quiet');
+  assert.equal((await quietApply(f,job,{assistantId})).ok,false);assert.equal(f.note().text,'Other note');assert.equal(f.doc.text,'Other note');assert.equal(f.messages.some(m=>m.type==='NOTE_AI_PROPOSE'),false);
 });

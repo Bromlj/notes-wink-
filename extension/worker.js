@@ -83,17 +83,17 @@ async function nativeUpdate(e) {
   if(e.threadId)a.threadId=e.threadId;if(typeof e.text==='string')a.pending.text=e.text;
   if(typeof e.noteFileError==='string')a.noteFileError=e.noteFileError;
   for(const key of ['activity','diff','plan','requests'])if(e[key]!==undefined)a.pending[key]=e[key];
-  const edited=e.noteEdit,base=a.pending.noteEditBase;
-  if(a.editNote===true&&base&&edited&&edited.noteId===a.noteId&&edited.baseRevision===base.revision&&Number.isSafeInteger(edited.sequence)&&edited.sequence>=0&&edited.sequence>(a.pending.noteEditDiscardedSequence??-1)&&typeof edited.text==='string'&&new TextEncoder().encode(edited.text).length<=C.MAX_TEXT_BYTES&&(!a.noteEditStage||a.noteEditStage.requestId!==e.requestId||edited.sequence>a.noteEditStage.sequence)) {
+  const edited=e.noteEdit,base=a.pending.noteEditBase,quietGrant=a.pending.mode==='quiet'&&a.pending.noteEditTarget?.bindingId?a.pending.noteEditTarget:null;
+  if((quietGrant||a.pending.mode!=='quiet'&&a.editNote===true)&&base&&edited&&edited.noteId===a.noteId&&edited.baseRevision===base.revision&&(!quietGrant||edited.file?.bindingId===quietGrant.bindingId)&&Number.isSafeInteger(edited.sequence)&&edited.sequence>=0&&edited.sequence>(a.pending.noteEditDiscardedSequence??-1)&&typeof edited.text==='string'&&new TextEncoder().encode(edited.text).length<=C.MAX_TEXT_BYTES&&(!a.noteEditStage||a.noteEditStage.requestId!==e.requestId||edited.sequence>a.noteEditStage.sequence)) {
     const previous=a.noteEditStage?.requestId===e.requestId?a.noteEditStage:null;
     const applied=a.pending.noteEditAppliedBase;
-    a.noteEditStage={requestId:e.requestId,text:edited.text,sequence:edited.sequence,baseRevision:previous?.baseRevision??applied?.revision??base.revision,baseText:previous?.baseText??applied?.text??base.text,baseHtml:previous?.baseHtml??applied?.html??base.html,conflict:false};
+    a.noteEditStage={requestId:e.requestId,text:edited.text,sequence:edited.sequence,baseRevision:previous?.baseRevision??applied?.revision??base.revision,baseText:previous?.baseText??applied?.text??base.text,baseHtml:previous?.baseHtml??applied?.html??base.html,conflict:false,...(quietGrant?{quiet:true,quietGrant:{...quietGrant}}:{})};
     if(edited.file?.noteId===a.noteId&&typeof edited.file.bindingId==='string'&&/^[a-f0-9-]{36}$/i.test(edited.file.bindingId)&&typeof edited.file.hash==='string'&&/^[a-f0-9]{64}$/.test(edited.file.hash)){a.noteEditStage.file=edited.file;a.noteFileError='';}
     await applyNoteStage(a);
   }
   a.pending.phase=e.phase||a.pending.phase;
   if(e.status!=='working') {
-    a.lastTurn={requestId:e.requestId,mode:a.pending.mode==='quiet'?'quiet':'panel',status:e.status};
+    a.lastTurn={requestId:e.requestId,mode:a.pending.mode==='quiet'?'quiet':'panel',status:e.status,...(quietGrant?{noteEdit:true,noteEditTarget:{...quietGrant}}:{})};
     const target=a.pending.noteEditTarget||(base?{noteId:a.noteId,baseRevision:base.revision}:null),outcome=e.noteEditOutcome;
     if(target&&outcome&&outcome.requestId===e.requestId&&outcome.noteId===target.noteId&&outcome.baseRevision===target.baseRevision&&['changed','unchanged','error'].includes(outcome.status)&&typeof outcome.changed==='boolean'&&Number.isSafeInteger(outcome.sequence)&&outcome.sequence>=0){
       a.noteEditOutcome={requestId:e.requestId,noteId:outcome.noteId,baseRevision:outcome.baseRevision,status:outcome.status,changed:outcome.changed,sequence:outcome.sequence,...(typeof outcome.error==='string'&&outcome.error?{error:outcome.error.slice(0,4000)}:{})};
@@ -107,15 +107,15 @@ async function nativeUpdate(e) {
 }
 function unappliedNoteStage(a){return !!a.noteEditStage&&a.noteEditStage.appliedRevision==null;}
 function conflictStage(stage,reason){stage.conflict=true;stage.conflictReason=reason;}
-async function applyNoteStage(a,force=false,fileGuard={}){
+async function applyNoteStage(a,force=false,fileGuard={},explicitQuiet=false){
   const stage=a.noteEditStage;
   // An explicit confirmed Apply is consent for this revision only. Automatic
   // syncing still requires the separate persistent note-editing permission.
-  if(!stage||(a.editNote!==true&&!force))return {applied:false,reason:'disabled'};
+  if(!stage||(a.editNote!==true&&!force&&!explicitQuiet))return {applied:false,reason:'disabled'};
   if(stage.appliedRevision!=null)return {applied:false,reason:'already_applied'};
   stage.text=stage.text.replace(/\r\n?/g,'\n');
   let owner;
-  for(const tabId of editorPorts.keys()){const s=await state(tabId);if(s.noteId===a.noteId&&s.assistantId===a.id&&s.private===false&&s.editorFrame===0){if(s.aiMode==='quiet')return {applied:false,reason:'quiet'};owner=tabId;break;}}
+  for(const tabId of editorPorts.keys()){const s=await state(tabId);if(s.noteId===a.noteId&&s.assistantId===a.id&&s.private===false&&s.editorFrame===0){if(s.aiMode==='quiet'&&!explicitQuiet||explicitQuiet&&s.aiMode!=='quiet'||stage.quiet===true&&!force&&!explicitQuiet)return {applied:false,reason:'quiet'};owner=tabId;break;}}
   // The canonical ordinary note is never changed by a hidden/inactive proposal.
   // Its separately saved AI stage may continue advancing in the background.
   if(owner==null)return {applied:false,reason:'hidden'};
@@ -131,8 +131,8 @@ async function applyNoteStage(a,force=false,fileGuard={}){
     if(current){writeDisk=true;if(!force){stage.requiresApply=true;conflictStage(stage,'explicit_apply');return {applied:false,conflict:true,reason:'explicit_apply'};}}
   }
   if(!force&&(n.revision!==stage.baseRevision||n.text!==stage.baseText||n.html!==stage.baseHtml)){conflictStage(stage,'local_changes');return {applied:false,conflict:true,reason:'local_changes'};}
-  if(n.text===stage.text&&!writeDisk){Object.assign(stage,{baseRevision:n.revision,baseText:n.text,baseHtml:n.html,appliedRevision:n.revision,conflict:false});delete stage.conflictReason;if(a.pending?.id===stage.requestId)a.pending.noteEditAppliedBase={revision:n.revision,text:n.text,html:n.html};if(stage.file)await send(owner,{type:'NOTE_FILE_PRESENTED',noteId:n.id,file:stage.file});return {applied:false,reason:'unchanged'};}
-  const response=await send(owner,{type:'NOTE_AI_PROPOSE',assistantId:a.id,noteId:a.noteId,editRequestId:stage.requestId,confirmed:force===true,text:stage.text,expectedRevision:n.revision,expectedText:n.text,expectedHtml:n.html,...(stage.file?{file:stage.file}:{} )});
+  if(n.text===stage.text&&!writeDisk){Object.assign(stage,{baseRevision:n.revision,baseText:n.text,baseHtml:n.html,appliedRevision:n.revision,conflict:false});delete stage.conflictReason;if(a.pending?.id===stage.requestId)a.pending.noteEditAppliedBase={revision:n.revision,text:n.text,html:n.html};if(stage.file)await send(owner,{type:'NOTE_FILE_PRESENTED',assistantId:a.id,noteId:n.id,editRequestId:stage.requestId,file:stage.file,...(explicitQuiet?{explicitQuiet:true}:{})});return {applied:false,reason:'unchanged'};}
+  const response=await send(owner,{type:'NOTE_AI_PROPOSE',assistantId:a.id,noteId:a.noteId,editRequestId:stage.requestId,confirmed:force===true,text:stage.text,expectedRevision:n.revision,expectedText:n.text,expectedHtml:n.html,...(stage.file?{file:stage.file}:{} ),...(explicitQuiet?{explicitQuiet:true}:{})});
   if(!response?.accepted){
     if(response?.reason!=='hidden'&&response?.reason!=='context_changed')conflictStage(stage,response?.reason||'unavailable');
     // A timed-out proposal may still reach the renderer. Its ordered failure
@@ -148,7 +148,7 @@ async function applyNoteStage(a,force=false,fileGuard={}){
     await chrome.storage.local.set({[`note:${n.id}`]:next});
     Object.assign(stage,{baseRevision:next.revision,baseText:next.text,baseHtml:next.html,appliedRevision:next.revision,conflict:false});delete stage.requiresApply;delete stage.conflictReason;
     if(a.pending?.id===stage.requestId)a.pending.noteEditAppliedBase={revision:next.revision,text:next.text,html:next.html};
-    const committed=await send(owner,{type:'NOTE_AI_COMMITTED',noteId:next.id,revision:next.revision,updatedAt:next.updatedAt,text:next.text,html:next.html,editRequestId:stage.requestId,...(stage.file?{file:stage.file}:{} )});
+    const committed=await send(owner,{type:'NOTE_AI_COMMITTED',assistantId:a.id,noteId:next.id,revision:next.revision,updatedAt:next.updatedAt,text:next.text,html:next.html,editRequestId:stage.requestId,...(stage.file?{file:stage.file}:{} ),...(explicitQuiet?{explicitQuiet:true}:{})});
     if(!committed?.ok)throw Error('The editor did not acknowledge the saved AI note change.');
     return {applied:true};
   }catch(error){
@@ -284,6 +284,7 @@ async function assistantForTab(tabId) {
   if (!id) id = crypto.randomUUID();
   let value = await local(`assistant:${id}`, {id,agentVersion:4,noteId:s.noteId,messages:[],draft:'',pending:null,error:''});
   value.editNote=value.editNote===true;
+  value.quietEditNote=value.quietEditNote===true;
   // Old threads retained tool-disabling instructions in their Codex history.
   // Preserve them in History and start a clean agent thread for the upgrade.
   if(value.agentVersion!==4&&!value.pending){id=crypto.randomUUID();value={id,agentVersion:4,noteId:s.noteId,messages:[],draft:value.draft||'',pending:null,error:'Codex agent mode is ready. Choose a project folder in Options to work on your files.'};}
@@ -299,7 +300,7 @@ async function assistantForTab(tabId) {
 }
 async function saveAssistant(value) { value.updatedAt=Date.now();await chrome.storage.local.set({[`assistant:${value.id}`]:value}); }
 async function bindAssistant(tabId,value){await saveAssistant(value);await chrome.storage.local.set({[`noteAssistant:${value.noteId}`]:value.id,lastAssistantId:value.id});await patch(tabId,{assistantId:value.id});}
-function freshAssistant(noteId,project,draft=''){return {id:crypto.randomUUID(),agentVersion:4,noteId,project,messages:[],draft,pending:null,error:'',editNote:false};}
+function freshAssistant(noteId,project,draft=''){return {id:crypto.randomUUID(),agentVersion:4,noteId,project,messages:[],draft,pending:null,error:'',editNote:false,quietEditNote:false};}
 function projectKey(value){return String(value||'').replace(/[\\/]+$/,'').toLowerCase();}
 async function projects(){
   let values=await local('projects',null);if(values)return values;
@@ -358,7 +359,7 @@ async function dispatch(m, sender, requestEpoch = privacyEpoch) {
       requireEditor(sender);const s=await state(tabId);if(s.noteId!==m.noteId)throw Error('The selected note changed.');const a=await assistantForTab(tabId);if(a.pending)throw Error('Finish or stop the active turn before reloading the document.');
       if(typeof m.text!=='string'||new TextEncoder().encode(m.text).length>C.MAX_TEXT_BYTES)throw Error('The document exceeds 2 MB.');
       const old=C.note(await local(`note:${s.noteId}`,null),s.noteId),n=C.note({...old,text:m.text.replace(/\r\n?/g,'\n'),html:'',name:m.name||old.name,revision:old.revision+1,updatedAt:Date.now()},old.id);
-      await chrome.storage.local.set({[`note:${n.id}`]:n});a.noteEditStage=null;a.noteFileError='';if(m.relinked)a.editNote=false;await saveAssistant(a);return {note:n,assistant:a};
+      await chrome.storage.local.set({[`note:${n.id}`]:n});a.noteEditStage=null;a.noteFileError='';if(m.relinked){a.editNote=false;a.quietEditNote=false;}await saveAssistant(a);return {note:n,assistant:a};
     }
     case 'AI_DRAFT': {
       requireEditor(sender);
@@ -370,13 +371,28 @@ async function dispatch(m, sender, requestEpoch = privacyEpoch) {
       const a=await contextAssistant(tabId,m);a.editNote=m.enabled;
       // Turning editing off stops further app updates for this run. An already
       // accepted Codex file grant lasts until the turn finishes or is stopped.
-      if(!m.enabled&&a.pending){delete a.pending.noteEditBase;delete a.pending.noteEditAppliedBase;}
+      if(!m.enabled&&a.pending?.mode!=='quiet'&&a.pending){delete a.pending.noteEditBase;delete a.pending.noteEditAppliedBase;}
       await saveAssistant(a);return {assistant:a};
+    }
+    case 'AI_QUIET_NOTE_EDIT_SET': {
+      const active=await activeEditor(sender,requestEpoch);if(active.aiMode!=='quiet')throw Error('Open Notes for self to change this setting.');
+      if(typeof m.enabled!=='boolean')throw Error('Choose whether this note may be edited.');
+      const a=await contextAssistant(tabId,m);if(a.pending)throw Error('Finish or stop the active turn before changing this setting.');
+      a.quietEditNote=m.enabled;await saveAssistant(a);return {assistant:a};
     }
     case 'AI_NOTE_SYNC': case 'AI_NOTE_APPLY': {
       await activeEditor(sender,requestEpoch);const a=await contextAssistant(tabId,m);
       const result=await applyNoteStage(a,m.type==='AI_NOTE_APPLY'&&m.force===true,{bindingId:m.bindingId,expectedHash:m.expectedHash});
       await saveAssistant(a);return {assistant:a,...result};
+    }
+    case 'AI_QUIET_NOTE_APPLY': {
+      const active=await activeEditor(sender,requestEpoch);if(active.aiMode!=='quiet')throw Error('Open Notes for self to insert this revision.');
+      const a=await contextAssistant(tabId,m),turn=a.lastTurn,stage=a.noteEditStage,grant=turn?.noteEditTarget;
+      if(a.pending)throw Error('Wait for this revision to finish.');
+      if(!turn||turn.mode!=='quiet'||turn.status!=='completed'||turn.noteEdit!==true||turn.requestId!==m.requestId||!stage||stage.requestId!==turn.requestId||stage.quiet!==true||!stage.quietGrant||!grant?.bindingId||grant.noteId!==a.noteId||stage.quietGrant.noteId!==grant.noteId||stage.quietGrant.baseRevision!==grant.baseRevision||stage.quietGrant.bindingId!==grant.bindingId||stage.quietGrant.fileHash!==grant.fileHash)throw Error('There is no completed note revision for this tab.');
+      if(stage.requiresApply){conflictStage(stage,'explicit_apply');await saveAssistant(a);return {assistant:a,applied:false,conflict:true,reason:'explicit_apply'};}
+      if(!stage.file||stage.file.noteId!==a.noteId||stage.file.bindingId!==grant.bindingId||m.bindingId!==grant.bindingId||typeof m.expectedHash!=='string'||![grant.fileHash,stage.file.hash].includes(m.expectedHash)){conflictStage(stage,'disk_changed');await saveAssistant(a);return {assistant:a,applied:false,conflict:true,reason:'disk_changed'};}
+      const result=await applyNoteStage(a,false,{bindingId:m.bindingId,expectedHash:m.expectedHash},true);await saveAssistant(a);return {assistant:a,...result};
     }
     case 'AI_NOTE_DISCARD': {
       await activeEditor(sender,requestEpoch);const a=await contextAssistant(tabId,m);
@@ -389,16 +405,17 @@ async function dispatch(m, sender, requestEpoch = privacyEpoch) {
       const settings=await selection(),active=await activeEditor(sender,requestEpoch),mode=active.aiMode==='quiet'?'quiet':'panel';
       const a=await contextAssistant(tabId,m);if(a.pending)throw new Error('A response is already running.');
       let noteEdit,noteFile;
-      if(a.editNote===true&&mode!=='quiet'){
+      if(mode==='quiet'?a.quietEditNote===true:a.editNote===true){
         if(unappliedNoteStage(a))throw new Error('Apply or discard the pending AI note changes before starting another note-editing task.');
         const n=C.note(await local(`note:${a.noteId}`,null),a.noteId);
         if(typeof globalThis.NotesNative==='function')noteFile=(await native('notePrepare',{noteId:n.id,text:n.text,bindingId:m.noteBindingId,expectedHash:m.noteFileHash})).file;
+        if(mode==='quiet'&&(!noteFile||noteFile.noteId!==a.noteId||typeof noteFile.bindingId!=='string'||!/^[a-f0-9-]{36}$/i.test(noteFile.bindingId)||typeof noteFile.hash!=='string'||!/^[a-f0-9]{64}$/.test(noteFile.hash)))throw Error('The current note file is unavailable. Reload it before editing.');
         await activeEditor(sender,requestEpoch);
         noteEdit={noteId:a.noteId,text:n.text,revision:n.revision,...(noteFile?{bindingId:noteFile.bindingId,fileHash:noteFile.hash}:{} )};a.noteEditStage=null;
       }
       const files=Array.isArray(m.files)?m.files.slice(0,20):[];
       a.pending={id:m.id,text:'',phase:'Starting',startedAt:Date.now(),model:settings.model,effort:settings.effort,mode};a.noteEditOutcome=null;
-      if(noteEdit){const n=await local(`note:${a.noteId}`,null);a.pending.noteEditBase={revision:noteEdit.revision,text:noteEdit.text,html:n?.html||''};a.pending.noteEditTarget={noteId:a.noteId,baseRevision:noteEdit.revision};}
+      if(noteEdit){const n=await local(`note:${a.noteId}`,null);a.pending.noteEditBase={revision:noteEdit.revision,text:noteEdit.text,html:n?.html||''};a.pending.noteEditTarget={noteId:a.noteId,baseRevision:noteEdit.revision,...(mode==='quiet'?{bindingId:noteEdit.bindingId,fileHash:noteEdit.fileHash}:{})};}
       a.error='';a.messages.push({role:'user',text:m.text});a.draft='';await saveAssistant(a);
       running.set(m.id,{tabId,assistantId:a.id});
       // Submission runs outside the storage queue. Notes continue saving while

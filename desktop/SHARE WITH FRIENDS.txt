@@ -1,4 +1,4 @@
-NOTES WORKSPACE 5.3.0 — WINDOWS DESKTOP APP
+NOTES WORKSPACE 5.3.1 — WINDOWS DESKTOP APP
 
 Share the release ZIP, not your installed app-data folder.
 
@@ -31,13 +31,20 @@ Extra access requests require your decision inside the panel.
 Alt+S opens Notes for self: a plain text area with no visible AI controls.
 Enter sends and closes it; Shift+Enter adds a line. A green dot means ready.
 Alt+I inserts the completed reply once, with ordinary Undo. It never inserts
-automatically. While compact mode is unlocked, Alt+1-6 selects Low, Medium,
+automatically. A small unlabeled checkbox permits the next compact request to
+edit the real note file. It starts off for every new note. When checked, Alt+I
+applies the completed exact revision with Undo, without opening the sidebar.
+Disk changes may continue while the displayed note stays frozen. Manual or
+newer disk changes keep the revision pending for review.
+In either unlocked menu, Alt+1-6 selects Low, Medium,
 High, Extra high, Maximum or Ultra when supported. Alt+comma / Alt+period
-cycles the account's models; Alt+Shift+M also selects the next model. Numeric
+cycles the account's models; Alt+minus / Alt+plus (or equals) also work; Alt+Shift+M also selects the next model. Numeric
 feedback means model position / thinking level; 0 is another catalog default.
 Unsupported levels leave your selection unchanged. Alt+Q hides the box and
-indicator while accepted work continues. Compact mode grants no implicit
-note-edit access. Open the full sidebar to review errors or approvals.
+indicator while accepted work continues. Both menus reflect shortcut selections.
+Compact mode grants note-edit access only when its separate checkbox was on
+before sending. It cannot add permission to an already running request.
+Open the full sidebar to review errors or unrelated approvals.
 
 File > Open links a real UTF-8 text file; Save updates it and Save As chooses a
 new location. Edit this note is an optional checkbox above the question box.

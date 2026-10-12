@@ -155,4 +155,4 @@ app.on('before-quit',event=>{
   if(quitting)return;event.preventDefault();if(closing)return;closing=true;
   Promise.all([...windows.values()].filter(w=>w.webContents.getURL()===ORIGIN+'/editor.html').map(w=>w.webContents.executeJavaScript('Promise.all([globalThis.NotepadEditor?.flush(),globalThis.NotepadAssistant?.beforeNoteSwitch()])').catch(()=>{}))).then(()=>runtime?.close()).finally(()=>{service?.close();quitting=true;app.quit();});
 });
-module.exports={diagnostics:()=>({appId:APP_ID,iconPath,dataRoot,version:'5.3.0'})};
+module.exports={diagnostics:()=>({appId:APP_ID,iconPath,dataRoot,version:'5.3.1'})};

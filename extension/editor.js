@@ -172,11 +172,15 @@
     aiUndo.delete(note.id);changed();await flush();undoChanged();
   }
   function expectedHTML(html,text){if(html)return RichEditor.sanitize(html);const box=document.createElement('div');box.textContent=text;return box.innerHTML;}
+  function explicitQuietApply(m){return m.explicitQuiet===true&&m.confirmed!==true&&globalThis.NotepadAssistant?.mode?.()==='quiet'&&globalThis.NotepadAssistant?.owns(m.assistantId)&&globalThis.NotepadAssistant?.canApplyQuietNote?.(m.assistantId,m.editRequestId)===true;}
   function proposeAI(m){
     if(!globalThis.NotepadAssistant?.visible())return {ok:false,accepted:false,reason:'hidden'};
-    if(globalThis.NotepadAssistant?.mode?.()==='quiet')return {ok:false,accepted:false,reason:'quiet'};
-    if(!(globalThis.NotepadAssistant?.canApplyNote?.()??globalThis.NotepadAssistant?.visible()))return {ok:false,accepted:false,reason:'hidden'};
+    const quiet=globalThis.NotepadAssistant?.mode?.()==='quiet',explicitQuiet=explicitQuietApply(m);
+    if(quiet&&!explicitQuiet)return {ok:false,accepted:false,reason:'quiet'};
+    if(m.explicitQuiet===true&&!explicitQuiet)return {ok:false,accepted:false,reason:'context_changed'};
+    if(!explicitQuiet&&!(globalThis.NotepadAssistant?.canApplyNote?.()??globalThis.NotepadAssistant?.visible()))return {ok:false,accepted:false,reason:'hidden'};
     if(!note||switchingNote||note.id!==m.noteId||!globalThis.NotepadAssistant.owns(m.assistantId))return {ok:false,accepted:false,reason:'context_changed'};
+    if(explicitQuiet&&desktop&&(!fileState?.bindingId||fileState.bindingId!==m.file?.bindingId))return {ok:false,accepted:false,reason:'context_changed'};
     if(aiCommit||dirty||note.revision!==m.expectedRevision||editor.value!==m.expectedText||RichEditor.html()!==expectedHTML(m.expectedHtml,m.expectedText))return {ok:false,accepted:false,reason:'local_changes'};
     if(typeof m.text!=='string'||new TextEncoder().encode(m.text).length>C.MAX_TEXT_BYTES)return {ok:false,accepted:false,reason:'invalid_text'};
     const before={text:editor.value,html:RichEditor.html()},old=aiUndo.get(note.id);
@@ -483,7 +487,9 @@
   NoteConnection.onMessage((message, sender, reply) => {
     if (sender.id !== (globalThis.NoteDesktop?.id || chrome.runtime.id)) return;
     if(message?.type==='NOTE_FILE_PRESENTED'){
-      if(note?.id!==message.noteId||dirty||switchingNote||!(globalThis.NotepadAssistant?.canApplyNote?.()??globalThis.NotepadAssistant?.visible())||globalThis.NotepadAssistant?.mode?.()==='quiet'){reply({ok:false,accepted:false});return;}
+      const quiet=globalThis.NotepadAssistant?.mode?.()==='quiet',explicitQuiet=explicitQuietApply(message);
+      if(note?.id!==message.noteId||dirty||switchingNote||!globalThis.NotepadAssistant?.visible()||(quiet?!explicitQuiet:message.explicitQuiet===true||!(globalThis.NotepadAssistant?.canApplyNote?.()??globalThis.NotepadAssistant?.visible()))){reply({ok:false,accepted:false});return;}
+      if(explicitQuiet&&desktop&&(!fileState?.bindingId||fileState.bindingId!==message.file?.bindingId)){reply({ok:false,accepted:false});return;}
       if(message.file)acceptFile(message.file);reply({ok:true,accepted:true});return;
     }
     if(message?.type==='NOTE_AI_PROPOSE'){reply(proposeAI(message));return;}

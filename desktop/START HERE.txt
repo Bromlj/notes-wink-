@@ -1,4 +1,4 @@
-NOTES WORKSPACE DESKTOP 5.3.0 — WINDOWS x64
+NOTES WORKSPACE DESKTOP 5.3.1 — WINDOWS x64
 
 Extract the entire ZIP first. Double-click Install.cmd to copy the program to
 your Windows account and create a Notes Workspace desktop shortcut.
@@ -28,15 +28,20 @@ Choose a project folder in the Reference panel for reading, editing, creating
 and moving real files, implementing changes, commands and tests. Access requests appear in the panel and wait for your
 decision. A new + note has its own chat and inherits the selected project.
 Attach files or drag them into the Reference panel. Your ordinary note is only
-included when you explicitly enable Edit this note.
+included when you explicitly enable Edit this note or the compact checkbox.
 
 COMPACT PROMPT MODE
 Alt+S opens Notes for self: a plain text area without AI buttons. Enter sends and
 closes the box; Shift+Enter adds a line. A subtle green status dot means the
 reply is complete. Alt+I inserts that reply at the end of the owning note,
 once; ordinary Undo can remove it. Nothing is inserted automatically.
-While compact mode is unlocked, Alt+1-6 selects Low, Medium, High, Extra high,
-Maximum or Ultra when supported. Alt+comma / Alt+period cycles models;
+The small unlabeled checkbox permits the next compact request to edit the real
+note file. It starts off for each new note and is separate from sidebar editing.
+Checked edits run on disk in the background while the displayed note stays
+frozen. When the green dot appears, Alt+I applies the exact note revision with
+Undo, without opening the sidebar. Manual or newer disk changes require review.
+In either unlocked menu, Alt+1-6 selects Low, Medium, High, Extra high,
+Maximum or Ultra when supported. Alt+minus / Alt+plus (or equals) cycles models; comma / period also work;
 Alt+Shift+M also selects the next model. Numbers mean model position / level.
 Level 0 is another catalog default outside the six mapped thinking levels.
 Unsupported levels leave the selection unchanged. Alt+W opens the full sidebar
@@ -44,8 +49,10 @@ with distinct colours for your messages and Codex replies. Errors or approval
 requests use an amber marker; open the full sidebar to read and respond.
 Alt+Q immediately hides every compact control and indicator without cancelling
 accepted work. Reopen a mode before inserting; the restore passphrase applies.
-Compact requests do not grant automatic note editing even if Edit this note
-was previously checked. Selected project tools and approvals still apply.
+Compact requests never automatically show edits, even if Edit this note was
+previously checked. The compact checkbox only grants access before submission;
+it cannot add permission to an already running request. Selected project tools
+and unrelated approvals still apply. Both menus reflect keyboard selections.
 
 REAL DOCUMENTS AND EDIT THIS NOTE (OPTIONAL)
 File > Open links a UTF-8 text file on your drive. Save updates that file;

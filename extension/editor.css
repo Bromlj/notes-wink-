@@ -169,6 +169,9 @@ dialog input { width:100%; }
 #quiet-prompt, #quiet-controls { position:fixed; z-index:9; right:14px; bottom:44px; width:min(350px,calc(100vw - 28px)); border:1px solid #505050; border-radius:7px; background:#292929; box-shadow:0 6px 22px #0006; }
 #quiet-prompt { padding-bottom:10px; }
 .quiet-heading { display:flex; align-items:center; justify-content:space-between; min-height:32px; padding:2px 9px 2px 12px; font-size:12px; color:#d4d4d4; }
+#quiet-title { margin-right:auto; }
+#quiet-edit-note { flex:0 0 auto; width:14px; height:14px; margin:0 8px; padding:0; accent-color:#8a8a8a; }
+#quiet-edit-note:focus-visible { outline:1px solid #78c9f5; outline-offset:3px; }
 #quiet-prompt .quiet-heading button, #quiet-controls .quiet-heading button { padding:0; width:26px; height:26px; border:0; background:transparent; font-size:20px; }
 #quiet-question { display:block; width:calc(100% - 20px); margin:0 10px; padding:8px; min-height:74px; max-height:180px; resize:vertical; border:1px solid #555; border-radius:3px; background:#222; color:#ededed; font:13px/1.5 Consolas,'Cascadia Mono',monospace; caret-color:#fff; }
 #quiet-question::placeholder { color:#bcbcbc; }

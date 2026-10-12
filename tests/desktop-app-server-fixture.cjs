@@ -19,6 +19,17 @@ function startTurn(p,id){
  const number=++turnNumber,turnId='fixture-turn-'+number,itemId='fixture-message-'+number;
  const input=(p.input||[]).filter(x=>x.type==='text').map(x=>x.text).join('\n');
  const t={id:turnId,itemId,input};turns.set(p.threadId,t);respond(id,{turn:{id:turnId,status:'inProgress',items:[]}});
+ const quietNote=/QUIET_NOTE_FIXTURE_(OFF|EMPTY|MANUAL|DISK|OWNER|APPROVAL)/.exec(input)?.[1];
+ if(quietNote){
+  if(quietNote==='OFF'){t.timer=setTimeout(()=>finish(p.threadId,'Ordinary quiet-note fixture reply 487.'),900);return;}
+  const file=editableNote(input);if(!file)throw Error('Quiet note fixture has no editable note grant.');
+  if(quietNote==='APPROVAL'){
+   t.timer=setTimeout(()=>{const rpcId=++approvalNumber;approvals.set(rpcId,{threadId:p.threadId});write({id:rpcId,method:'item/commandExecution/requestApproval',params:{threadId:p.threadId,turnId,itemId:'quiet-note-approval-'+number,cwd:p.cwd,command:'node quiet-note-fixture-request.cjs',reason:'Disposable opted-in note approval',availableDecisions:['accept','decline','cancel']}});},200);return;
+  }
+  const baseline=fs.readFileSync(file,'utf8'),first=baseline+'quiet note first 487',latest=baseline+'quiet note final '+quietNote+' 938\n';
+  t.noteTimers=[setTimeout(()=>fs.writeFileSync(file,first),450),setTimeout(()=>fs.writeFileSync(file,latest),1800)];
+  t.timer=setTimeout(()=>finish(p.threadId,quietNote==='EMPTY'?'':'Fixture changed actual note '+quietNote+'.'),2300);return;
+ }
  const quiet=/QUIET_FIXTURE_(OK|HIDDEN|SLOW|ERROR|APPROVAL|SECOND)/.exec(input)?.[1];
  if(quiet){
   t.timer=setTimeout(()=>{

@@ -1,46 +1,40 @@
-# Notes Workspace Desktop 5.3.0 verification
+# Notes Workspace Desktop 5.3.1 verification
 
-Verified on Windows x64 on 12 October 2026. The app bundles Electron 44.7.0 and official Codex CLI 0.160.0 and runs independently of Edge. Tests used disposable app profiles, actual disposable text files and projects. Recipients do not need a separate Node or Python installation or an API key.
+Verified on Windows x64 on 12 October 2026. This update adds explicit compact note editing and shared model/thinking shortcuts.
 
-## Passed checks
+## Result and behavior
 
-- **172 helper tests:** protocol, account/catalog, attachments, streaming/retries/disconnects, approvals and policy, project paths, backup/storage, real-file bindings and races, note/run/revision ownership, outcome reporting, physical icon paths and quiet-mode restore/hide guards.
-- **35 guarded automatic-edit renderer checks:** insertions across ordinary and rich text, leading/trailing whitespace, CRLF handling, formatting preservation, native Undo/Redo, AI Undo and refusal to overwrite hidden or dirty notes.
-- **20 compact-insertion renderer checks:** explicit once-only insertion, note ownership and hidden-state guards, pending refusal, whitespace, rich content and native Undo/Redo. Includes the mixed text node plus empty trailing paragraph that initially failed and was repaired.
-- **30 packaged desktop checks:** ordinary notes, visible formatting, find/replace, native Save As results, restricted renderer/navigation, icon identity, model/thinking selection, attachments, independent chats, projects/history, hidden replies, approvals, settings, passphrases, restore races, account launch/cancel, sandbox setup flow and recovery.
-- **20 packaged direct-file checks:** persistent bindings, actual Save/Save As, disk plus rich-note Undo, external-change refusal, Reload/Relink, hidden conflicts, restart protection, missing files and pending previews after Save As.
-- **4 first-run checks:** the real bundled Codex runtime with an empty isolated Codex home reported signed out, ordinary notes worked, official sign-in was available, and panic returned to plain notes. No prompt was submitted from this empty profile.
-- **9 packaged migration checks:** notes, chats, projects, drafts and partial replies survive import without resending unfinished work. Existing notes remain. Reviewed pending revisions write the current actual file and support rich Undo.
-- **17 packaged note-edit checks:** opt-in file editing, visible updates, frozen hidden text and recovery, reveal catch-up, local conflicts, opt-out, independent tabs, explicit Apply, CRLF and rich-note Undo.
-- **7 packaged feedback checks:** successful, unchanged, failed and retried turns report their actual file outcome, model and effort. Unchanged work is no longer silently presented as a note update.
-- **18 packaged compact-mode checks:** plain Notes for self prompt, keyboard-only catalog model cycling and fixed thinking shortcuts, unsupported-level refusal, selection/hide races, running-task settings preserved while next-task choices change, no implicit note context or grant even with editing checked, no partial insertion, green readiness only for the completed owning reply, once-only insertion, native Undo/Redo, concealed completion, hidden/wrong-note guards, error/approval states, role colours, passphrase and queued-hide races.
-- **5 live Codex append checks:** real gpt-6.1-sol at Low appended to the actual opted-in note file without an Apply step. Visible and disk text retained both original lines, no pending formatting conflict remained, and guarded Undo restored the exact original rich note and file.
-- **6 live Codex compact checks:** real gpt-6.1-sol at Low was selected through compact keyboard shortcuts; panic hid all AI surfaces while inference completed; the note stayed unchanged; restore showed readiness; Alt+I inserted once; normal Undo restored the original text, markup and file. The full sidebar stayed hidden throughout.
+The small unlabeled checkbox in **Notes for self** grants the current verified note file and containing folder to the next compact request. It starts off for new notes and is separate from the sidebar's **Edit this note** permission. Accepted work can edit the real disk file while the displayed and recovery note remain frozen. A completed revision is held until explicit **Alt+I**, without opening Reference or approving a replacement dialog. Native Undo restores the original rich note and file. Manual changes, newer disk content, relinking, imported previews and wrong-note requests cannot force an overwrite.
 
-These comprise **172 helper tests, 55 renderer checks and 116 packaged-app checks**. Suites recording renderer exceptions reported zero. Live tests did not automatically approve additional access.
+**Alt+1–6** and previous/next model shortcuts now work in both unlocked modes and synchronize both menus. Previous/next accepts Alt+minus / Alt+plus (or equals), comma/period and the existing next-model Alt+Shift+M. Unsupported efforts retain the current selection; changing choices does not alter a running turn. Alt+Q conceals all AI surfaces while accepted work continues.
 
-The real append reached disk in 13.5 seconds, the visible note in 14.1 seconds and completed in 16.6 seconds. The final real compact reply completed in 5.1 seconds. These are individual measurements, not latency guarantees; model effort, tools, service load and connection affect duration.
+Codex receives an explicit description of the note-folder grant. Sandbox restrictions and genuine approvals remain enabled. Permissions cannot be added retrospectively to an already submitted request.
 
-Plain notes, compact prompt and coloured full-sidebar captures were visually inspected. The established dark Windows Notepad appearance was retained. Local captures and detailed results are excluded from publication.
+## Checks run for this update
 
-## Release privacy and construction
+- **184 helper tests:** core and agent behavior, desktop service/storage/backup, persistent files and races, native note scopes, worker note editing and icon configuration. This includes 11 new compact permission/application cases and local-only backup consent.
+- **64 Chromium renderer checks:** 44 proposal/Undo cases and 20 explicit reply-insertion cases. Nine new cases cover explicit quiet application and its privacy/ownership guards.
+- **124 packaged-app checks:** 30 desktop flows, 20 direct-file flows, 17 sidebar note-edit flows, 9 backup-import flows, 7 outcome-feedback flows, 19 compact-mode flows, 16 compact note-edit flows and 6 actual Codex compact note-edit checks.
+- **3 additional real native-host checks:** an existing conversation in the default Conversations workspace receives a newly permitted managed note outside that workspace and edits/verifies its actual file without additional approval.
 
-The public repository is a fresh source-only publication, with GitHub noreply commit identity and no copied development history. Source and release inventories were checked for private profiles, credentials, notes, conversations, attachments, generated results and developer home paths. Dependencies and runtimes are copied from explicit build inputs; the installed app profile and Codex home are never inputs. Each recipient signs in independently.
+The **375 checks** cover independent tabs, project/file bindings, rich editing, file conflicts, hidden completion, once-only explicit insertion/application, empty final response readiness, passphrase/ownership races, native Undo and cross-menu keyboard selections. Renderer suites reported zero exceptions. No additional access approval was accepted by live tests.
 
-Packaging writes a per-file SHA-256 manifest, verifies every archived file against it, rejects private-data filenames and publishes an archive checksum. The unmodified vendor Electron executable is renamed; window, taskbar and desktop shortcut use the notepad icon through application APIs. Embedded EXE icon/version metadata remain Electron's. No custom code-signing certificate is provided.
+The final packaged live run used **gpt-6.1-sol / Low**. It reused an existing conversation, reached the actual note file in **11.9 seconds**, completed in **14.5 seconds** and explicitly applied in **14.8 seconds**. The Reference sidebar remained hidden throughout; Undo restored the original rich text and disk file. These are individual observations, not latency guarantees.
 
-The per-user installation was verified on this host: all 678 program files matched the release manifest, the desktop shortcut resolved with the physical notepad icon, startup succeeded, and saved note text and formatting were retained. Program files and recovery data remain separate.
+The compact prompt capture was visually inspected against the established dark Windows Notepad appearance. A fresh independent read-only review returned **ship**, with no material fixes. A generic subagent substituted for the named design-review harness; no detector ran. Local screenshots, detailed results and disposable profiles are excluded from publication.
+
+## Release construction and privacy
+
+The public repository contains only explicitly curated source, synthetic fixtures, icons, licenses and guides. It retains the existing clean publication history and GitHub noreply commit identity. Source and release inventories are checked for credentials, notes, conversations, attachments, private profiles, generated test results and developer home paths. Each recipient signs in independently with their own Codex account.
+
+Packaging uses explicit program/runtime inputs, creates a per-file SHA-256 manifest, checks every archived file and publishes an archive checksum. Installed app data and Codex home are not build inputs. The official Electron executable remains unmodified; window, taskbar and shortcut icons use application APIs. Embedded EXE metadata remain Electron's. No custom code-signing certificate is provided.
+
+The verified per-user update preserves saved note text and formatting. Program files and recovery data remain separate.
 
 ## Methods and limits
 
-Playwright drove the app's own packaged Electron instance, with sandboxing, context isolation and disabled renderer Node integration retained. Deterministic suites use an isolated app-server fixture. File/folder picker and account-launch tests substitute controlled responses at the main-process boundaries, then verify actual writes and official HTTPS authentication launch. They do not complete physical Windows dialogs or fresh human OAuth.
+Playwright drives isolated instances of the packaged Electron app. Deterministic suites use synthetic app-server fixtures. File-picker and sign-in launch checks substitute controlled main-process dialog responses; they do not complete physical Windows dialogs or fresh human OAuth. Real inference tests use disposable files and the current account's existing Codex sign-in without exporting credentials.
 
-Fresh human sign-in, first-time administrator sandbox setup, every Codex desktop integration and other computers were not fully tested. Earlier live project command workflows passed on this host; this release retains CLI 0.160.0 because 0.162.0 exposed a Windows sandbox refresh failure in earlier verification. Sandbox restrictions and approval prompts remain enabled. No claim of perfection or compatibility with every future service change is made.
+Fresh human sign-in, first-time administrator sandbox setup, every Codex desktop integration and other computers were not fully tested. Electron 44.7.0 and Codex CLI 0.160.0 are retained. The complete earlier 5.3.0 live project-work matrix was not rerun for this narrow update. No claim of perfection or compatibility with every future service change is made.
 
-## Files and visual discretion
-
-Compact requests do not implicitly grant note editing. Their reply is held outside the note until explicit Alt+I insertion while the owning note is visible and unlocked. Native Undo removes that insertion.
-
-Sidebar **Edit this note** is separate: it grants the real note file and containing folder to that accepted turn. Alt+Q freezes the displayed note and its canonical recovery text while actual disk edits may continue. Another program reading that file can see those changes. Reveal catches up unless manual changes require review. Save and Undo refuse stale disk hashes. Turning note editing off pauses updates but cannot revoke access already granted to an active task; Stop cancels explicitly.
-
-Visual hiding does not conceal processes, recording, authentication pages, file dialogs or system activity. Notes and backups are not encrypted. Closing the whole app, crashes, sleep or connection loss can interrupt work. The optional restore passphrase prevents accidental reveals, not access to an unlocked computer.
+Visual hiding does not conceal disk changes, processes, recording, authentication pages or system inspection. Notes and backups are not encrypted. Closing the entire app, crashes, sleep or network loss can interrupt work. The optional restore passphrase prevents accidental reveals; it does not secure an unlocked computer.

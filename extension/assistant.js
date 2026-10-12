@@ -2,7 +2,7 @@
 (() => {
   const $=id=>document.getElementById(id),panel=$('assistant-panel'),question=$('assistant-question'),quietQuestion=$('quiet-question');
   const request=(type,data)=>NoteConnection.request(type,data);
-  let enabled=false,aiMode=null,restoreToken=null,restoring=false,submitting=false,switching=false,state=null,settings=null,draftClock=0,draftTimer,uploadEpoch=0,contextEpoch=0,files=[],connecting=false,activitySignature='',requestSignature='',transcriptSignature='',historyLoading=false,capabilitiesLoading=false,submitError='',projects=[],quietPromptOpen=false,quietControlsOpen=false,quietError='',insertingQuiet=false,choosingQuiet=false,quietChoiceNotice=false,quietChoiceTimer;
+  let enabled=false,aiMode=null,restoreToken=null,restoring=false,submitting=false,switching=false,state=null,settings=null,draftClock=0,draftTimer,uploadEpoch=0,contextEpoch=0,files=[],connecting=false,activitySignature='',requestSignature='',transcriptSignature='',historyLoading=false,capabilitiesLoading=false,submitError='',projects=[],quietPromptOpen=false,quietControlsOpen=false,quietError='',insertingQuiet=false,choosingQuiet=false,quietChoiceNotice=false,quietChoiceTimer,quietEditPreference=null,quietApplyGuard=null;
   const quietEffortSlots=['low','medium','high','xhigh','max','ultra'];
   const consumedQuiet=new Set();try{for(const id of JSON.parse(sessionStorage.getItem('notesQuietConsumed')||'[]').slice(-200))if(typeof id==='string')consumedQuiet.add(id);}catch{}
   const context=()=>({epoch:contextEpoch,assistantId:state?.id});
@@ -19,21 +19,26 @@
   }
   function quietAnswer(){
     const turn=state?.lastTurn;if(!turn||turn.mode!=='quiet'||turn.status!=='completed'||state.pending||!state.noteId)return null;
+    const key=state.noteId+':'+turn.requestId;if(consumedQuiet.has(key))return null;
+    if(turn.noteEdit===true){const stage=state.noteEditStage;if(!stage||stage.quiet!==true||stage.requestId!==turn.requestId||stage.appliedRevision!=null)return null;return {noteEdit:true,key,noteId:state.noteId,requestId:turn.requestId,stage};}
     const message=[...(state.messages||[])].reverse().find(m=>m.role==='assistant'&&m.requestId===turn.requestId&&typeof m.text==='string'&&m.text.trim());
-    if(!message)return null;const key=state.noteId+':'+turn.requestId;return consumedQuiet.has(key)?null:{text:message.text,key,noteId:state.noteId,requestId:turn.requestId};
+    return message?{text:message.text,key,noteId:state.noteId,requestId:turn.requestId}:null;
   }
   function renderQuiet(){
     const active=enabled&&aiMode==='quiet'&&!switching;
     $('quiet-prompt').hidden=!active||!quietPromptOpen;$('quiet-controls').hidden=true;
     const modelIndex=settings?.models?.findIndex(m=>m.model===settings.model)??-1,effortSlot=quietEffortSlots.indexOf(settings?.effort);
     $('quiet-title').textContent='Notes for self'+(modelIndex>=0?' · '+(modelIndex+1)+'/'+(effortSlot+1):'');
-    const blocked=!!state?.pending?.requests?.length,failed=!!(submitError||quietError||quietChoiceNotice||state?.error||!state?.pending&&state?.lastTurn?.mode==='quiet'&&['failed','interrupted'].includes(state.lastTurn.status)),ready=!!quietAnswer();
+    const answer=quietAnswer(),noteError=!state?.pending&&state?.lastTurn?.mode==='quiet'&&state.lastTurn.noteEdit===true&&(answer?.stage.conflict&&answer.stage.conflictReason!=='quiet'||state.noteFileError||state.noteEditOutcome?.requestId===state.lastTurn.requestId&&state.noteEditOutcome.status==='error');
+    const blocked=!!state?.pending?.requests?.length,failed=!!(submitError||quietError||quietChoiceNotice||state?.error||noteError||!state?.pending&&state?.lastTurn?.mode==='quiet'&&['failed','interrupted'].includes(state.lastTurn.status)),ready=!!answer;
     const kind=blocked?'blocked':failed?'error':state?.pending?'working':ready?'ready':null;
     const indicator=$('quiet-indicator');indicator.hidden=!active||!kind;indicator.dataset.state=kind||'';
     const hint=blocked||failed?'Needs attention':state?.pending?'Working':ready?'Ready':'';
     $('quiet-status').textContent=hint;$('quiet-status').dataset.error=String(blocked||failed);
     indicator.title=hint;indicator.setAttribute('aria-label',hint||'Notes status');
-    quietQuestion.disabled=!active||switching||submitting||!!state?.pending;$('quiet-send').disabled=!active||submitting||choosingQuiet||!!state?.pending||!settings;
+    $('quiet-edit-note').checked=quietEditPreference?.on??state?.quietEditNote===true;
+    $('quiet-edit-note').disabled=!active||switching||submitting||!!state?.pending||!!quietEditPreference||insertingQuiet;
+    quietQuestion.disabled=!active||switching||submitting||!!state?.pending;$('quiet-send').disabled=!active||submitting||choosingQuiet||!!quietEditPreference||!!state?.pending||!settings;
     $('quiet-model').disabled=$('quiet-thinking').disabled=!active||!settings||connecting||choosingQuiet;
   }
   function closeQuietPrompt(){quietPromptOpen=false;renderQuiet();$('editor').focus({preventScroll:true});}
@@ -42,29 +47,38 @@
     await restore('quiet');
   }
   function quietOptions(){void cycleQuietModel(1);}
+  const selectionAvailable=()=>enabled&&!switching&&(aiMode==='quiet'||aiMode==='panel'&&!panel.hidden);
   function unavailableQuietChoice(){
     quietChoiceNotice=true;clearTimeout(quietChoiceTimer);const current=context(),token=restoreToken;renderQuiet();
+    if(aiMode==='panel')status('This thinking level is unavailable for the selected model.',true);
     quietChoiceTimer=setTimeout(()=>{if(token===restoreToken&&sameContext(current)){quietChoiceNotice=false;renderQuiet();}},2000);
   }
   async function chooseQuiet(model,effort){
-    if(!enabled||aiMode!=='quiet'||switching||restoring||submitting||choosingQuiet||connecting||!settings)return;
+    if(!selectionAvailable()||restoring||submitting||choosingQuiet||connecting||!settings)return;
     if(!model?.supportedReasoningEfforts?.some(e=>e.reasoningEffort===effort)){unavailableQuietChoice();return;}
-    const current=context(),token=restoreToken;choosingQuiet=true;quietChoiceNotice=false;clearTimeout(quietChoiceTimer);renderQuiet();
-    try{const value=await request('AI_CONTROLS',{operation:'choose',model:model.model,effort});if(!enabled||aiMode!=='quiet'||token!==restoreToken||!sameContext(current))return;quietError='';controls(value);}
-    catch(e){if(enabled&&aiMode==='quiet'&&token===restoreToken&&sameContext(current)){quietError=e.message;renderQuiet();}}
-    finally{choosingQuiet=false;renderQuiet();}
+    const current=context(),token=restoreToken;choosingQuiet=true;quietChoiceNotice=false;clearTimeout(quietChoiceTimer);$('assistant-model').disabled=$('assistant-thinking').disabled=true;renderQuiet();
+    try{const value=await request('AI_CONTROLS',{operation:'choose',model:model.model,effort});if(!selectionAvailable()||token!==restoreToken||!sameContext(current))return;quietError='';controls(value);}
+    catch(e){if(selectionAvailable()&&token===restoreToken&&sameContext(current)){quietError=e.message;status(e.message,true);renderQuiet();}}
+    finally{choosingQuiet=false;if(settings)$('assistant-model').disabled=$('assistant-thinking').disabled=false;renderQuiet();}
   }
-  function chooseQuietEffort(slot){if(!enabled||aiMode!=='quiet'||!settings)return;void chooseQuiet(settings.models.find(m=>m.model===settings.model),quietEffortSlots[slot]);}
+  function chooseQuietEffort(slot){if(!selectionAvailable()||!settings)return;void chooseQuiet(settings.models.find(m=>m.model===settings.model),quietEffortSlots[slot]);}
   function cycleQuietModel(step){
-    if(!enabled||aiMode!=='quiet'||!settings?.models?.length)return;
+    if(!selectionAvailable()||!settings?.models?.length)return;
     const models=settings.models,index=models.findIndex(m=>m.model===settings.model),model=models[(Math.max(0,index)+step+models.length)%models.length];
     const effort=model.supportedReasoningEfforts.some(e=>e.reasoningEffort===settings.effort)?settings.effort:model.defaultReasoningEffort;void chooseQuiet(model,effort);
   }
   async function insertQuiet(){
-    if(!enabled||switching||insertingQuiet)return;const answer=quietAnswer();if(!answer)return;const current=context(),token=restoreToken;insertingQuiet=true;
-    try{const result=await globalThis.NotepadEditor?.insertReference(answer.text,{noteId:answer.noteId});if(!result?.inserted)throw Error('The response could not be added. Open Reference and try again.');consumedQuiet.add(answer.key);while(consumedQuiet.size>200)consumedQuiet.delete(consumedQuiet.values().next().value);try{sessionStorage.setItem('notesQuietConsumed',JSON.stringify([...consumedQuiet]));}catch{}if(enabled&&token===restoreToken&&sameContext(current)){quietError=result.fileError||result.saveError||'';renderQuiet();}}
+    if(!enabled||switching||insertingQuiet||submitting||quietEditPreference)return;const answer=quietAnswer();if(!answer||answer.noteEdit&&aiMode!=='quiet')return;const current=context(),token=restoreToken;insertingQuiet=true;renderQuiet();let guard=null;
+    try{let result;if(answer.noteEdit){
+      await globalThis.NotepadEditor?.flush();if(!enabled||aiMode!=='quiet'||token!==restoreToken||!sameContext(current)||state?.pending)return;
+      guard={current,token,requestId:answer.requestId};quietApplyGuard=guard;
+      result=await request('AI_QUIET_NOTE_APPLY',{assistantId:current.assistantId,requestId:answer.requestId,...globalThis.NotepadEditor?.fileGuard?.()});
+      if(sameContext(current)&&result.assistant)render(result.assistant);
+      if(!result.applied&&!['already_applied','unchanged'].includes(result.reason)){const reasons={local_changes:'Your note changed while this task worked. Open Reference to review the saved revision.',disk_changed:'The file changed again. Open Reference to review the saved revision.',formatting_conflict:'Your current formatting needs review before applying this revision.',hidden:'Show Notes for self before inserting this revision.',context_changed:'Return to the original note to insert its revision.',unavailable:'The note editor did not respond. The revision is kept.',save_failed:'The revision could not be saved. Your note and pending revision are kept.'};throw Error(result.error||reasons[result.reason]||'The note revision needs attention. Open Reference for details.');}
+    }else{result=await globalThis.NotepadEditor?.insertReference(answer.text,{noteId:answer.noteId});if(!result?.inserted)throw Error('The response could not be added. Open Reference and try again.');}
+    consumedQuiet.add(answer.key);while(consumedQuiet.size>200)consumedQuiet.delete(consumedQuiet.values().next().value);try{sessionStorage.setItem('notesQuietConsumed',JSON.stringify([...consumedQuiet]));}catch{}if(enabled&&token===restoreToken&&sameContext(current)){quietError=result.fileError||result.saveError||'';renderQuiet();}}
     catch(e){if(enabled&&token===restoreToken&&sameContext(current)){quietError=e.message;renderQuiet();}}
-    finally{insertingQuiet=false;}
+    finally{if(quietApplyGuard===guard)quietApplyGuard=null;insertingQuiet=false;renderQuiet();}
   }
   function effortLabel(effort){return {xhigh:'Extra high',max:'Maximum',ultra:'Ultra'}[effort]||String(effort||'').replace(/^./,c=>c.toUpperCase());}
   function elapsed(){if(!state?.pending)return;if(submitError){status(submitError,true);return;}const seconds=Math.max(0,Math.floor((Date.now()-(state.pending.startedAt||Date.now()))/1000));const phase=(state.pending.requests||[]).length?'Waiting for your response':state.pending.phase||'Working';const model=settings?.models?.find(m=>m.model===state.pending.model),selection=[model?.displayName||state.pending.model,effortLabel(state.pending.effort)].filter(Boolean).join(' · ');status([phase,selection,`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`,'Stop is available'].filter(Boolean).join(' · '));}
@@ -190,7 +204,7 @@
   function discardFiles(){for(const file of files)void request('AI_REMOVE_UPLOAD',{id:file.id}).catch(()=>{});files=[];renderFiles();}
   async function saveDraft(){clearTimeout(draftTimer);if(!state?.id||switching)return;await request('AI_DRAFT',{text:question.value,assistantId:state.id});}
   function clearContext(){
-    contextEpoch++;uploadEpoch++;draftClock++;clearTimeout(draftTimer);clearTimeout(quietChoiceTimer);quietChoiceNotice=false;submitting=false;submitError='';quietError='';quietPromptOpen=quietControlsOpen=false;discardFiles();
+    contextEpoch++;uploadEpoch++;draftClock++;clearTimeout(draftTimer);clearTimeout(quietChoiceTimer);quietChoiceNotice=false;submitting=false;submitError='';quietError='';quietEditPreference=quietApplyGuard=null;quietPromptOpen=quietControlsOpen=false;discardFiles();
     question.value=quietQuestion.value='';question.disabled=switching;$('assistant-output').value='';$('assistant-transcript').replaceChildren();transcriptSignature='';$('assistant-activity').replaceChildren();$('assistant-diff').textContent='';$('assistant-plan').replaceChildren();$('assistant-requests').replaceChildren();
     $('assistant-progress').hidden=$('assistant-requests').hidden=true;activitySignature=requestSignature='';$('assistant-stop').hidden=true;$('assistant-send').disabled=true;
     $('assistant-capabilities').replaceChildren();historyLoading=capabilitiesLoading=false;
@@ -205,7 +219,7 @@
   function contextChanged(assistant){clearContext();switching=false;state=null;render(assistant,true);void loadProjects();if(enabled&&aiMode==='panel'){void syncNote();if(!$('assistant-settings').hidden)void history();}}
   async function cancelNoteSwitch(){try{const r=await request('AI_READY');contextChanged(r.assistant);}catch(e){switching=false;status(e.message,true);}}
   function hide(notify=true){
-    enabled=false;aiMode=null;restoreToken=null;restoring=false;uploadEpoch++;clearTimeout(quietChoiceTimer);quietChoiceNotice=false;quietPromptOpen=quietControlsOpen=false;panel.hidden=true;$('assistant-settings').hidden=true;$('assistant-diagnostic-text').hidden=true;
+    enabled=false;aiMode=null;restoreToken=null;restoring=false;quietEditPreference=quietApplyGuard=null;uploadEpoch++;clearTimeout(quietChoiceTimer);quietChoiceNotice=false;quietPromptOpen=quietControlsOpen=false;panel.hidden=true;$('assistant-settings').hidden=true;$('assistant-diagnostic-text').hidden=true;
     $('assistant-send').disabled=true;renderQuiet();$('editor').focus({preventScroll:true});void saveDraft().catch(()=>{});if(notify)void request('HIDE').catch(()=>{});
   }
   async function restore(mode='panel'){
@@ -213,10 +227,10 @@
     if(enabled&&aiMode===mode){if(mode==='quiet'){quietPromptOpen=true;quietControlsOpen=false;renderQuiet();quietQuestion.focus();}else question.focus();return;}
     // Freeze visible note proposals before the asynchronous mode switch. An old
     // panel turn can keep working, but must not paint through quiet mode.
-    enabled=false;aiMode=null;panel.hidden=true;quietPromptOpen=quietControlsOpen=false;renderQuiet();restoring=true;
+    enabled=false;aiMode=null;quietApplyGuard=null;panel.hidden=true;quietPromptOpen=quietControlsOpen=false;renderQuiet();restoring=true;
     const token=crypto.randomUUID();restoreToken=token;try{await request('RESUME',{token,mode});}catch(e){if(restoreToken===token){$('error').textContent=e.message;$('error').hidden=false;restoreToken=null;}}finally{if(restoreToken===token)restoring=false;}
   }
-  globalThis.NotepadAssistant=Object.freeze({hide,restore,beforeNoteSwitch,cancelNoteSwitch,noteContext:contextChanged,chooseProject:selectProject,working:()=>!!state?.pending,token:()=>restoreToken,matches:t=>!!t&&t===restoreToken,mode:()=>enabled&&!switching?aiMode:null,visible:()=>enabled&&!switching&&(aiMode==='quiet'||aiMode==='panel'&&!panel.hidden),canApplyNote:()=>enabled&&aiMode==='panel'&&!panel.hidden&&!switching,owns:id=>state?.id===id&&!switching});
+  globalThis.NotepadAssistant=Object.freeze({hide,restore,beforeNoteSwitch,cancelNoteSwitch,noteContext:contextChanged,chooseProject:selectProject,working:()=>!!state?.pending,token:()=>restoreToken,matches:t=>!!t&&t===restoreToken,mode:()=>enabled&&!switching?aiMode:null,visible:()=>enabled&&!switching&&(aiMode==='quiet'||aiMode==='panel'&&!panel.hidden),canApplyNote:()=>enabled&&aiMode==='panel'&&!panel.hidden&&!switching,canApplyQuietNote:(assistantId,requestId)=>!!quietApplyGuard&&enabled&&aiMode==='quiet'&&!switching&&!state?.pending&&state?.id===assistantId&&state?.lastTurn?.mode==='quiet'&&state.lastTurn.status==='completed'&&state.lastTurn.noteEdit===true&&state.lastTurn.requestId===requestId&&quietApplyGuard.requestId===requestId&&quietApplyGuard.token===restoreToken&&sameContext(quietApplyGuard.current),owns:id=>state?.id===id&&!switching});
   function sameProject(a,b){return String(a||'').replace(/[\\/]+$/,'').toLowerCase()===String(b||'').replace(/[\\/]+$/,'').toLowerCase();}
   function renderProjectLabel(){
     const path=state?.project||'',project=projects.find(p=>sameProject(p.path,path));
@@ -243,16 +257,16 @@
   }
   async function connect(refresh=false){if(connecting)return;connecting=true;status('Connecting to Codex…');renderQuiet();try{controls(await request('AI_CONTROLS',{operation:refresh?'reconnect':'inspect'}));}catch(e){settings=null;render();status(e.message,true);}finally{connecting=false;renderQuiet();}}
   async function choose(changedModel,quiet=false){
-    if(!enabled||!settings||quiet&&aiMode!=='quiet')return;const model=settings.models.find(m=>m.model===$(quiet?'quiet-model':'assistant-model').value);if(!model)return;let effort=$(quiet?'quiet-thinking':'assistant-thinking').value;
+    if(!enabled||choosingQuiet||!settings||quiet&&aiMode!=='quiet')return;const model=settings.models.find(m=>m.model===$(quiet?'quiet-model':'assistant-model').value);if(!model)return;let effort=$(quiet?'quiet-thinking':'assistant-thinking').value;
     if(changedModel&&!model.supportedReasoningEfforts.some(e=>e.reasoningEffort===effort))effort=model.defaultReasoningEffort;
     if(quiet){await chooseQuiet(model,effort);return;}
     $('assistant-model').disabled=$('assistant-thinking').disabled=$('quiet-model').disabled=$('quiet-thinking').disabled=true;
     try{controls(await request('AI_CONTROLS',{operation:'choose',model:model.model,effort}));quietError='';$('quiet-controls-status').textContent='Settings apply to the next question.';$('quiet-controls-status').dataset.error='false';status(state?.pending?'Selection saved for the next question.':'Selection saved.');renderQuiet();}catch(e){controls(settings);$('quiet-controls-status').textContent=e.message;$('quiet-controls-status').dataset.error='true';status(e.message,true);}
   }
   async function submit(quiet=false){
-    if(!enabled||aiMode!==(quiet?'quiet':'panel')||switching||submitting||choosingQuiet||!settings||quiet&&state?.pending)return;const text=(quiet?quietQuestion:question).value.trim();if(!text)return;const current=context(),token=restoreToken;
+    if(!enabled||aiMode!==(quiet?'quiet':'panel')||switching||submitting||choosingQuiet||insertingQuiet||!settings||quiet&&(state?.pending||quietEditPreference))return;const text=(quiet?quietQuestion:question).value.trim();if(!text)return;const current=context(),token=restoreToken;
     submitting=true;submitError=quietError='';quietChoiceNotice=false;clearTimeout(quietChoiceTimer);const clock=draftClock,steering=!!state?.pending;render();status(steering?'Sending follow-up…':'Starting…');
-    try{await saveDraft();if(!quiet&&!steering){if(globalThis.NoteDesktop)await globalThis.NotepadEditor?.ensureFile();await globalThis.NotepadEditor?.flush();}if(!enabled||token!==restoreToken||!sameContext(current))return;const file=globalThis.NotepadEditor?.file?.();const value=await request(steering?'AI_STEER':'AI_SEND',{id:crypto.randomUUID(),text,files:quiet?[]:files.map(f=>f.id),assistantId:current.assistantId,...!quiet&&file?{noteBindingId:file.bindingId,noteFileHash:file.hash}:{}});if(!sameContext(current))return;if(clock===draftClock)question.value=quietQuestion.value='';if(!quiet){files=[];renderFiles();}render(value.assistant);await saveDraft();if(enabled&&token===restoreToken&&sameContext(current)){if(quiet){quietPromptOpen=false;renderQuiet();$('editor').focus({preventScroll:true});}else question.focus();}}catch(e){if(enabled&&token===restoreToken&&sameContext(current)){submitError=e.message;status(submitError,true);}}finally{if(sameContext(current)){submitting=false;$('assistant-send').disabled=!enabled||switching||!settings;$('assistant-send').textContent=state?.pending?'Steer':'Send';renderNoteEditing();renderQuiet();}}
+    try{const noteAccess=!quiet||state?.quietEditNote===true;await saveDraft();if(noteAccess&&!steering){if(globalThis.NoteDesktop)await globalThis.NotepadEditor?.ensureFile();await globalThis.NotepadEditor?.flush();}if(!enabled||token!==restoreToken||!sameContext(current))return;const file=globalThis.NotepadEditor?.file?.();const value=await request(steering?'AI_STEER':'AI_SEND',{id:crypto.randomUUID(),text,files:quiet?[]:files.map(f=>f.id),assistantId:current.assistantId,...noteAccess&&file?{noteBindingId:file.bindingId,noteFileHash:file.hash}:{}});if(!sameContext(current))return;if(clock===draftClock)question.value=quietQuestion.value='';if(!quiet){files=[];renderFiles();}render(value.assistant);await saveDraft();if(enabled&&token===restoreToken&&sameContext(current)){if(quiet){quietPromptOpen=false;renderQuiet();$('editor').focus({preventScroll:true});}else question.focus();}}catch(e){if(enabled&&token===restoreToken&&sameContext(current)){submitError=e.message;status(submitError,true);}}finally{if(sameContext(current)){submitting=false;$('assistant-send').disabled=!enabled||switching||!settings;$('assistant-send').textContent=state?.pending?'Steer':'Send';renderNoteEditing();renderQuiet();}}
   }
   async function attach(incoming){
     if(!enabled||switching||!incoming.length)return;const epoch=uploadEpoch,current=context();
@@ -270,6 +284,13 @@
   }
   function showOptions(){if(!enabled||switching)return;$('assistant-settings').hidden=!$('assistant-settings').hidden;if(!$('assistant-settings').hidden){if(!settings)void connect();void loadProjects();void history();}}
   $('quiet-close').addEventListener('click',closeQuietPrompt);
+  $('quiet-edit-note').addEventListener('change',async()=>{
+    if(!enabled||aiMode!=='quiet'||switching||submitting||state?.pending||quietEditPreference||insertingQuiet){renderQuiet();return;}
+    const current=context(),token=restoreToken,preference={on:$('quiet-edit-note').checked};quietEditPreference=preference;renderQuiet();
+    try{const r=await request('AI_QUIET_NOTE_EDIT_SET',{enabled:preference.on,assistantId:current.assistantId});if(sameContext(current)&&token===restoreToken){quietError='';render(r.assistant);}}
+    catch(e){if(enabled&&aiMode==='quiet'&&sameContext(current)&&token===restoreToken)quietError=e.message;}
+    finally{if(quietEditPreference===preference)quietEditPreference=null;renderQuiet();}
+  });
   $('quiet-send').addEventListener('click',()=>void submit(true));
   $('quiet-options').addEventListener('click',quietOptions);
   $('quiet-open-panel').addEventListener('click',()=>void restore('panel'));
@@ -321,10 +342,11 @@
   document.addEventListener('keydown',e=>{
     if(e.altKey&&!e.ctrlKey&&!e.metaKey){
       if(!e.shiftKey&&['KeyW','KeyS','KeyI'].includes(e.code)){e.preventDefault();e.stopImmediatePropagation();if(e.code==='KeyW')void restore('panel');else if(e.code==='KeyS')void toggleQuiet();else void insertQuiet();return;}
-      if(enabled&&aiMode==='quiet'){
+      if(selectionAvailable()){
         const digit=/^(?:Digit|Numpad)([1-6])$/.exec(e.code)?.[1]||(/^[1-6]$/.test(e.key)?e.key:null);
         if(!e.shiftKey&&digit){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)chooseQuietEffort(Number(digit)-1);return;}
         if(!e.shiftKey&&(['Comma','Period'].includes(e.code)||[',','.'].includes(e.key))){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)cycleQuietModel(e.code==='Comma'||e.key===','?-1:1);return;}
+        if(['Minus','NumpadSubtract','Equal','NumpadAdd'].includes(e.code)||['-','=','+'].includes(e.key)){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)cycleQuietModel(['Minus','NumpadSubtract'].includes(e.code)||e.key==='-'?-1:1);return;}
         if(e.shiftKey&&e.code==='KeyM'){e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)quietOptions();return;}
       }
     }

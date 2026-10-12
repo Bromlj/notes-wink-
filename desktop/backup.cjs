@@ -75,6 +75,8 @@ function assistant(value, id, importing) {
   // A backup carries the revision preview, never an opt-in to edit the note on
   // a different installation. Existing local permissions survive a merge.
   out.editNote = !importing && value.editNote === true;
+  if (own(value,'quietEditNote') && typeof value.quietEditNote !== 'boolean') invalid('compact note editing permission');
+  out.quietEditNote = !importing && value.quietEditNote === true;
   if (value.noteEditStage != null) out.noteEditStage = noteEditStage(value.noteEditStage, importing);
   else if (own(value,'noteEditStage')) out.noteEditStage = null;
   const preserveWork = source => {

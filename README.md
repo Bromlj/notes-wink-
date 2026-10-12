@@ -24,15 +24,15 @@ Each person signs in with **their own ChatGPT account** through the Account page
 
 - Write and format ordinary notes normally. **File > Open** binds a real UTF-8 text file; **Save** updates that same file, and **Save as** chooses a new file. Untitled notes get a persistent `Documents/<note-id>/note.txt` inside the app's local data folder.
 - **Alt+W** reveals the AI panel; **Alt+Q** hides it immediately. Hiding does not cancel accepted work.
-- **Alt+S** opens **Notes for self**, a plain text area with no visible AI controls. Enter sends and closes the box; a subtle green dot means the reply is ready. **Alt+I** inserts that completed reply once. The note remains unchanged until you choose to insert it.
-- While compact mode is unlocked, **Alt+1–6** selects Low, Medium, High, Extra high, Maximum or Ultra thinking when supported. **Alt+, / Alt+.** cycles account-provided models; **Alt+Shift+M** also selects the next model. A numeric model/level marker confirms your selection. The full sidebar retains named model and thinking menus.
+- **Alt+S** opens **Notes for self**, a plain text area with no visible AI controls. Enter sends and closes the box; a subtle green dot means the reply is ready. **Alt+I** inserts that completed reply once. The small unlabeled checkbox permits the next request to edit the current real note file; Alt+I then applies its exact revision with Undo. The displayed note remains unchanged until you choose to apply or insert; actual disk edits can continue in the background.
+- In either unlocked menu, **Alt+1–6** selects Low, Medium, High, Extra high, Maximum or Ultra thinking when supported. **Alt+− / Alt++** cycles account-provided models; comma/period also work; **Alt+Shift+M** also selects the next model. A numeric model/level marker confirms your selection. Both menus stay in sync; the full sidebar retains named model and thinking menus.
 - **Alt+Shift+S** opens settings, including an optional restore passphrase.
 - The **+** button creates a separate note and Codex chat. The project chooser is visible in the panel: click **Browse** to select a folder. Codex can edit that project's actual files and run commands using its normal sandbox and approval controls.
 - Choose models and thinking levels from the catalog returned by your signed-in account. Attach supported documents or images with the attachment control.
 - Your messages and AI replies have distinct colours and role labels in the full sidebar.
 - Active tasks show their selected model and thinking level. Higher thinking levels can take longer; choose Low in Options for simple edits when supported. Completed note-edit tasks report whether the file actually changed.
 - Enable **Edit this note** before asking Codex to revise the current note. This defaults off for each note/chat. Codex edits the actual bound file, and its progress appears in the note while visible.
-- **Alt+Q freezes the visible note and its recovery text, while Codex continues changing the actual disk file in the background.** Another program opening that file can see those disk changes. **Alt+W** catches the note up to the latest revision. If you typed meanwhile, review and explicitly apply or discard the pending revision.
+- **Alt+Q freezes the visible note and its recovery text, while Codex continues changing the actual disk file in the background.** Another program opening that file can see those disk changes. **Alt+W** catches sidebar tasks up to the latest revision; compact tasks wait for Alt+I. If you typed meanwhile, review and explicitly apply or discard the pending revision.
 - **Undo AI edit** becomes available after the task completes. It restores the pre-task file contents and rich note, provided neither has changed since the AI revision. It turns automatic note editing off and refuses to overwrite later local or external changes.
 - **Apply pending** can apply one staged revision even when **Edit this note** is off. Confirm the replacement when asked. This one-time action leaves automatic note editing off; you can undo it afterward.
 - If the disk file changed elsewhere, a guarded **Save** reports the conflict and keeps your local recovery text. Use **Reload from disk** to explicitly take the disk version. If the file moved or was renamed, use **Relink moved file** to select its current location; the app does not silently recreate the old path.
@@ -61,7 +61,7 @@ The ZIP and its checksum are written to `release/`. The build copies explicit ap
 
 ## Tests
 
-The 5.3.0 release passed **172 helper tests, 55 renderer checks and 116 packaged-app checks**, including live Codex edits to actual note files, project file moves/creation and successful commands while hidden. The [test report](desktop/TEST_REPORT.md) records the measured scope and limits.
+The 5.3.1 update passed **184 helper tests, 64 renderer checks, 124 packaged-app checks and 3 additional live note-scope checks**, including real compact note edits in existing conversations without extra folder approval, hidden completion, explicit application and exact rich Undo. The [test report](desktop/TEST_REPORT.md) records the measured scope and limits.
 
 After installing the source dependencies, run the helper tests without signing in:
 
@@ -80,6 +80,7 @@ node tests/desktop-direct-file-e2e.cjs
 node tests/desktop-first-run.cjs
 node tests/desktop-note-feedback-e2e.cjs
 node tests/desktop-quiet-e2e.cjs
+node tests/desktop-quiet-note-e2e.cjs
 ```
 
 These scripts launch the built application with disposable profiles and actual disposable text files. `desktop-first-run.cjs` uses the real bundled Codex runtime with an empty sign-in profile. The other scripts use the included app-server fixture. Test screenshots, document bindings, profiles and result files are generated locally and ignored by Git.
@@ -92,6 +93,8 @@ node tests/desktop-note-edit-live.cjs
 node tests/desktop-direct-file-live.cjs
 node tests/desktop-note-append-live.cjs
 node tests/desktop-quiet-live.cjs
+node tests/desktop-quiet-note-live.cjs
+node tests/desktop-note-scope-live.cjs
 ```
 
 Optional overrides: `PLAYWRIGHT_MODULE` selects an existing Playwright installation, `NOTES_DESKTOP_EXE` selects a built executable, and `NOTES_TEST_NODE` selects Node for deterministic fixtures. Defaults work with the commands above.
