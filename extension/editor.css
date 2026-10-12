@@ -170,8 +170,8 @@ dialog input { width:100%; }
 #quiet-prompt { padding-bottom:10px; }
 .quiet-heading { display:flex; align-items:center; justify-content:space-between; min-height:32px; padding:2px 9px 2px 12px; font-size:12px; color:#d4d4d4; }
 #quiet-title { margin-right:auto; }
-#quiet-edit-note { flex:0 0 auto; width:14px; height:14px; margin:0 8px; padding:0; accent-color:#8a8a8a; }
-#quiet-edit-note:focus-visible { outline:1px solid #78c9f5; outline-offset:3px; }
+#quiet-edit-note, #quiet-auto-note { flex:0 0 auto; width:14px; height:14px; margin:0 5px; padding:0; accent-color:#8a8a8a; }
+#quiet-edit-note:focus-visible, #quiet-auto-note:focus-visible { outline:1px solid #78c9f5; outline-offset:3px; }
 #quiet-prompt .quiet-heading button, #quiet-controls .quiet-heading button { padding:0; width:26px; height:26px; border:0; background:transparent; font-size:20px; }
 #quiet-question { display:block; width:calc(100% - 20px); margin:0 10px; padding:8px; min-height:74px; max-height:180px; resize:vertical; border:1px solid #555; border-radius:3px; background:#222; color:#ededed; font:13px/1.5 Consolas,'Cascadia Mono',monospace; caret-color:#fff; }
 #quiet-question::placeholder { color:#bcbcbc; }
@@ -187,5 +187,8 @@ footer > #quiet-indicator { display:flex; align-items:center; justify-content:ce
 footer > #quiet-indicator:hover { background:#ffffff10; }
 #quiet-indicator > span { width:7px; height:7px; border-radius:50%; background:#bcbcbc; }
 #quiet-indicator[data-state="ready"] > span { background:#89c997; }
+#quiet-indicator[data-completed="true"] > span { animation:quiet-completion-pulse .5s ease-in-out 2; }
+@keyframes quiet-completion-pulse { 0%,100% { opacity:1; } 50% { opacity:.25; } }
+@media(prefers-reduced-motion:reduce) { #quiet-indicator[data-completed="true"] > span { animation:none; } }
 #quiet-indicator[data-state="blocked"] > span, #quiet-indicator[data-state="error"] > span { background:#eac07c; }
 @media(max-width:720px) { #quiet-prompt, #quiet-controls { right:10px; bottom:41px; width:min(350px,calc(100vw - 20px)); } }

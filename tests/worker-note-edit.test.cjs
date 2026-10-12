@@ -157,9 +157,10 @@ test('panic cancels a quiet restore queued behind another request and an in-flig
   const locked=await fixture(passwordFixture('quiet-passphrase'));t.after(()=>locked.close());await locked.reveal('quiet');const unlocking=locked.request('UNLOCK',{token:locked.token,password:'quiet-passphrase'});await pause(1);await locked.hide();assert.equal((await unlocking).ok,false);assert.equal(locked.runtime.enabled(1),false);assert.equal(locked.messages.some(m=>m.type==='AI_MODE'),false);
 });
 
-async function quietEditable(f,text='Private ordinary baseline'){
+async function quietEditable(f,text='Private ordinary baseline',{automatic=false}={}){
   await f.reveal('quiet');await f.manual(text);
   const selected=await f.request('AI_QUIET_NOTE_EDIT_SET',{enabled:true});assert.equal(selected.ok,true,selected.error);
+  if(automatic)assert.equal((await f.request('AI_QUIET_NOTE_AUTO_SET',{enabled:true})).ok,true);
   const base={...f.doc},file=f.setFile(),id=await f.send({noteBindingId:file.bindingId,noteFileHash:file.hash});
   return {base,file,id};
 }
@@ -238,4 +239,55 @@ test('relinking a file converts its quiet pending stage into explicit review and
 test('a different selected note never receives a completed quiet note revision',async t=>{
   const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f),assistantId=f.assistantId;await finishQuietEdit(f,job);await f.newNote('Other note');await f.reveal('quiet');
   assert.equal((await quietApply(f,job,{assistantId})).ok,false);assert.equal(f.note().text,'Other note');assert.equal(f.doc.text,'Other note');assert.equal(f.messages.some(m=>m.type==='NOTE_AI_PROPOSE'),false);
+});
+test('quiet automatic insertion defaults off and settings cannot change hidden, in panel mode or during work',async t=>{
+  const f=await fixture();t.after(()=>f.close());assert.equal(f.assistant().quietAutoApply,false);
+  assert.equal((await f.request('AI_QUIET_NOTE_AUTO_SET',{enabled:true})).ok,false);
+  await f.reveal('panel');assert.equal((await f.request('AI_QUIET_NOTE_AUTO_SET',{enabled:true})).ok,false);
+  await f.reveal('quiet');assert.equal((await f.request('AI_QUIET_NOTE_AUTO_SET',{enabled:'true'})).ok,false);
+  const job=await quietEditable(f,'Automatic baseline',{automatic:true});assert.equal(f.assistant().quietAutoApply,true);assert.equal(f.assistant().pending.quietAutoApply,true);
+  const changed=await f.request('AI_QUIET_NOTE_AUTO_SET',{enabled:false});assert.equal(changed.ok,false);assert.match(changed.error,/active turn/);
+  await finishQuietEdit(f,job);assert.equal(f.assistant().lastTurn.quietAutoApply,true);
+  await f.request('AI_QUIET_NOTE_EDIT_SET',{enabled:false});assert.equal(f.assistant().quietAutoApply,true);assert.equal(f.assistant().quietEditNote,false);
+  await f.newNote();assert.equal(f.assistant().quietAutoApply,false);
+});
+test('automatic insertion preference never grants an ordinary quiet request note access',async t=>{
+  const f=await fixture();t.after(()=>f.close());await f.reveal('quiet');await f.request('AI_QUIET_NOTE_AUTO_SET',{enabled:true});
+  const id=await f.send();assert.equal(f.assistant().quietEditNote,false);assert.equal(f.assistant().pending.quietAutoApply,undefined);assert.equal(f.assistant().pending.noteEditTarget,undefined);
+  await f.publish(id,null,'completed');assert.equal(f.assistant().lastTurn.quietAutoApply,undefined);assert.equal(f.assistant().lastTurn.noteEdit,undefined);assert.equal((await f.request('AI_QUIET_NOTE_APPLY',{automatic:true,requestId:id})).ok,false);assert.equal(f.messages.some(m=>m.type==='NOTE_AI_PROPOSE'),false);
+});
+test('automatic completion still waits for a guarded UI application and applies one completed note revision once',async t=>{
+  const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f,'Automatic baseline',{automatic:true});
+  await finishQuietEdit(f,job,'Automatic completed revision');assert.equal(f.doc.text,job.base.text);assert.equal(f.note().text,job.base.text);assert.equal(f.messages.some(m=>m.type==='NOTE_AI_PROPOSE'),false);
+  const applied=await quietApply(f,job,{automatic:true});assert.equal(applied.applied,true);assert.equal(f.doc.text,'Automatic completed revision');assert.equal(f.note().text,'Automatic completed revision');
+  const proposal=f.messages.find(m=>m.type==='NOTE_AI_PROPOSE');assert.equal(proposal.explicitQuiet,true);assert.equal(proposal.confirmed,false);
+  assert.equal((await quietApply(f,job,{automatic:true})).reason,'already_applied');assert.equal(f.messages.filter(m=>m.type==='NOTE_AI_PROPOSE').length,1);
+});
+test('hidden automatic completion stays staged and only resumes its guarded application after quiet restore',async t=>{
+  const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f,'Hidden automatic baseline',{automatic:true});await f.hide();await finishQuietEdit(f,job,'Hidden completed revision');
+  assert.equal((await quietApply(f,job,{automatic:true})).ok,false);assert.equal(f.doc.text,job.base.text);assert.equal(f.note().text,job.base.text);assert.equal(f.messages.some(m=>m.type==='NOTE_AI_PROPOSE'),false);
+  await f.reveal('panel');assert.equal((await quietApply(f,job,{automatic:true})).ok,false);assert.equal(f.note().text,job.base.text);await f.reveal('quiet');assert.equal((await quietApply(f,job,{automatic:true})).applied,true);
+});
+test('enabling automatic insertion after submission cannot retrofit consent, while explicit insert remains available',async t=>{
+  const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f);await finishQuietEdit(f,job);
+  await f.request('AI_QUIET_NOTE_AUTO_SET',{enabled:true});assert.equal(f.assistant().lastTurn.quietAutoApply,undefined);
+  const denied=await quietApply(f,job,{automatic:true});assert.equal(denied.ok,false);assert.match(denied.error,/not enabled for this task/);assert.equal(f.note().text,job.base.text);
+  assert.equal((await quietApply(f,job,{automatic:'true'})).ok,false);assert.equal((await quietApply(f,job)).applied,true);
+});
+test('turning automatic insertion off after completion revokes automatic application without losing the staged revision',async t=>{
+  const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f,'Automatic baseline',{automatic:true});await finishQuietEdit(f,job);
+  await f.request('AI_QUIET_NOTE_AUTO_SET',{enabled:false});assert.equal(f.assistant().lastTurn.quietAutoApply,true);assert.equal(f.assistant().quietAutoApply,false);
+  assert.equal((await quietApply(f,job,{automatic:true})).ok,false);assert.equal(f.note().text,job.base.text);assert.equal(f.assistant().noteEditStage.appliedRevision,undefined);assert.equal((await quietApply(f,job)).applied,true);
+});
+test('automatic application cannot override newer local or disk changes or another selected note',async t=>{
+  const local=await fixture();t.after(()=>local.close());const localJob=await quietEditable(local,'Local baseline',{automatic:true});await finishQuietEdit(local,localJob);await local.manual('Manual replacement');
+  const conflicted=await quietApply(local,localJob,{automatic:true,force:true});assert.equal(conflicted.reason,'local_changes');assert.equal(local.doc.text,'Manual replacement');assert.equal(local.messages.some(m=>m.type==='NOTE_AI_PROPOSE'),false);
+  const disk=await fixture();t.after(()=>disk.close());const diskJob=await quietEditable(disk,'Disk baseline',{automatic:true});await finishQuietEdit(disk,diskJob);disk.setFile({hash:'f'.repeat(64)});
+  assert.equal((await quietApply(disk,diskJob,{automatic:true,force:true})).reason,'disk_changed');assert.equal(disk.doc.text,diskJob.base.text);
+  const owner=disk.assistantId;await disk.newNote('Other selected note');await disk.reveal('quiet');assert.equal((await quietApply(disk,diskJob,{automatic:true,assistantId:owner})).ok,false);assert.equal(disk.doc.text,'Other selected note');
+});
+test('hiding during automatic file verification cancels a delayed visible proposal',async t=>{
+  const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f,'Hide race baseline',{automatic:true});await finishQuietEdit(f,job);f.delayNative('noteVerify',150);
+  const applying=quietApply(f,job,{automatic:true});await until(()=>f.calls.some(x=>x.action==='noteVerify'),'automatic disk verification');await f.hide();const result=await applying;
+  assert.equal(result.applied,false);assert.equal(result.reason,'hidden');assert.equal(f.note().text,job.base.text);assert.equal(f.doc.text,job.base.text);assert.equal(f.assistant().noteEditStage.appliedRevision,undefined);
 });

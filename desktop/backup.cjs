@@ -77,6 +77,8 @@ function assistant(value, id, importing) {
   out.editNote = !importing && value.editNote === true;
   if (own(value,'quietEditNote') && typeof value.quietEditNote !== 'boolean') invalid('compact note editing permission');
   out.quietEditNote = !importing && value.quietEditNote === true;
+  if (own(value,'quietAutoApply') && typeof value.quietAutoApply !== 'boolean') invalid('automatic compact note editing permission');
+  out.quietAutoApply = !importing && value.quietAutoApply === true;
   if (value.noteEditStage != null) out.noteEditStage = noteEditStage(value.noteEditStage, importing);
   else if (own(value,'noteEditStage')) out.noteEditStage = null;
   const preserveWork = source => {

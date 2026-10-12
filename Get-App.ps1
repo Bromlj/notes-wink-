@@ -1,10 +1,10 @@
 param([switch]$VerifyOnly)
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
-$version = '5.3.1'
+$version = '5.3.2'
 $archiveName = "Notes-Workspace-Desktop-$version-Windows-x64.zip"
 $downloadUrl = "https://github.com/Bromlj/notes-wink-/releases/download/v$version/$archiveName"
-$expectedHash = 'baf2575e32750474e17a2d245b8f49a5315c0b63366ac638469d2bf24e55e60a'
+$expectedHash = 'fdc3f8ec18e7bac8cbbd1997ba72b27632f28235f694432d1839382d1f6516ca'
 if (!$VerifyOnly) {
     $installedExe = Join-Path $env:LOCALAPPDATA 'NotesWorkspace\DesktopProgram\Notes Workspace.exe'
     if (@(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $installedExe }).Count) { throw 'Close Notes Workspace, then run Get-App.cmd again.' }

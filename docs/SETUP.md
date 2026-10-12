@@ -1,72 +1,143 @@
-# Set up Notes Workspace
+# Set up Notes Workspace 5.3.2
 
-This Windows app looks like a notepad and includes an optional Codex panel and a compact prompt mode. Every person connects **their own account**. The download contains the app and its runtimes, not the developer's sign-in, chats or notes.
+A Windows notepad with an optional Codex sidebar and a small **Notes for self** box. Ordinary notes work without signing in. For AI, each person connects **their own ChatGPT account**; no account, subscription, chat history or credentials are shared with the download.
 
-## 1. Install
+This is the illustrated setup guide. The release also includes an offline copy named `SETUP.html`. The pictures below use a signed-out account page and made-up note text.
 
-1. Download the Windows x64 ZIP from [Releases](https://github.com/Bromlj/notes-wink-/releases/latest).
-2. Extract the **entire ZIP**. Keep the EXE, DLLs and `resources` folder together.
-3. Run `Install.cmd` inside the extracted `Notes Workspace` folder. It installs for your Windows account and creates a notepad desktop shortcut.
-4. Open **Notes Workspace** from the desktop. You can write notes immediately.
+## 1. Install the Windows app
 
-No separate Node, Python, development environment or API key is needed.
+1. Download the Windows x64 ZIP from [the latest release](https://github.com/Bromlj/notes-wink-/releases/latest).
+2. In File Explorer, right-click the ZIP and choose **Extract All**. Extract the **whole ZIP**, rather than opening the EXE from inside it.
+3. Open the extracted **Notes Workspace** folder and double-click **Install.cmd**.
+4. Open the **Notes Workspace** desktop shortcut with the blue notepad icon. You can start typing ordinary notes immediately.
 
-## 2. Connect your own AI account
+The installer installs for your Windows account. You do not need to install Python, Node, an Edge extension or a development environment, and you do not need an API key. Keep the application files, DLLs and `resources` folder together if you run the extracted EXE directly.
 
-1. Press **Alt+W** to open the Reference sidebar.
+## 2. Connect your own account
+
+1. Press **Alt+W** to open the full **Reference** sidebar in the notepad window.
 2. Choose **Options → Account → Sign in with ChatGPT**.
-3. Complete the official OpenAI sign-in in your browser using **your own account**, then return to Notes Workspace.
-4. Choose **Options → Reconnect**. Select a model and thinking level from the choices returned for your account.
-5. Send a short question in the sidebar and check that a reply appears.
+3. Complete the official OpenAI sign-in in your browser using **your own account** and usual sign-in method.
+4. Return to Notes Workspace. Check the Account page again, then choose **Options → Reconnect** in the sidebar.
+5. Select an available model and thinking level. Send a short question such as “Say hello” and check that an answer appears.
 
-An existing Codex sign-in for your Windows user may already be available. Being signed in to the ChatGPT website alone does not sign in this app. This app currently connects to **Codex through ChatGPT sign-in**; it uses your account's available Codex access and usage limits. It does not copy another person's subscription, website chats or credentials.
+![The signed-out Account page, with Sign in with ChatGPT and Check again buttons](images/own-account.png)
 
-For project commands, open the Account page's **Windows project tools** section. If it requests setup, use **Set up Windows sandbox** and complete the official Windows administrator prompt. The app keeps Codex's normal workspace restrictions and approval controls.
+*Example: a signed-out Account page. This picture contains no real account details.*
 
-## 3. Choose how to work
+An existing Codex sign-in for your Windows user may already be available. **Being signed in to the ChatGPT website alone does not sign in the app's Codex runtime.** The app uses your account's available Codex access and usage allowance. It does not reproduce the ChatGPT website or import its conversations.
+
+For commands and project work, check **Windows project tools** on the Account page. If setup is needed, choose **Set up Windows sandbox** and complete the official Windows administrator prompt. Codex's normal workspace restrictions and approval controls remain enabled.
+
+## 3. Learn the two views
+
+**Alt+W opens the full Reference sidebar.** It has named model and thinking menus, attachments, project controls, activity and approval requests. Your messages and Codex replies use different colours and role labels. **Edit this note** lets a sidebar request revise the current real note file, with visible progress and Undo.
+
+**Alt+S opens Notes for self.** It contains a text area, two small unlabeled checkboxes and a close button. Enter sends your request and closes the box; Shift+Enter adds a line. The two checkboxes are explained here so they do not need visible labels in the box.
+
+![Notes for self with sample text and both small checkboxes selected](images/notes-for-self.png)
+
+*Example text only. The left checkbox permits note editing; the right checkbox enables automatic application of completed note revisions. Both start off for a new note.*
+
+| Compact checkbox, left to right | Off | On before sending |
+| --- | --- | --- |
+| **First: edit this note** | The current note is not automatically sent to the request. Receive an ordinary reply. | The request can read and revise the current real note file using Codex's file tools. |
+| **Second: automatically add changes** | A completed note revision waits for **Alt+I**. | A completed, permitted note revision appears automatically while compact mode is unlocked, if your note and file still match the original baseline. |
+
+The second checkbox is available after the first is on. These settings are separate from the full sidebar's **Edit this note** option. They apply to the next request and cannot grant permission to a task already running. Each **+** note has a separate chat and starts with both compact settings off.
+
+Automatic application is for **completed note revisions**, not streaming text or ordinary chat replies. It never accepts command, file-access or other approvals. If you disable it after a task finishes, its staged revision is retained for manual insertion. Enabling it afterward cannot add automatic consent to an older request.
+
+## 4. Use the shortcuts and status dot
 
 | Shortcut | Action |
 | --- | --- |
+| **Alt+S** | Open or close Notes for self. |
+| **Enter** in that box | Send and close the box. |
+| **Shift+Enter** | Add a line to the question. |
 | **Alt+W** | Open the full Reference sidebar. |
-| **Alt+S** | Open or close **Notes for self**. Enter sends and closes it; Shift+Enter adds a line. |
-| **Alt+1–6** | Set thinking: 1 Low, 2 Medium, 3 High, 4 Extra high, 5 Maximum, 6 Ultra. |
-| **Alt+− / Alt++** | Previous / next account-provided model in either unlocked menu. Alt+, / Alt+. also work. |
-| **Alt+I** | Insert the completed compact reply, or apply its permitted note revision, once. |
-| **Alt+Q** | Immediately hide the sidebar, compact box, controls and indicator. Accepted work continues. |
-| **Alt+Shift+S** | Open app settings and optional restore passphrase. |
+| **Alt+Q** | Immediately hide the sidebar, compact box and status dot; freeze visible AI note changes. Repeated presses stay hidden. |
+| **Alt+I** | Append a completed compact reply once, or apply its permitted note revision once. No sidebar is needed. |
+| **Alt+1–6** | Select thinking level 1–6, as shown below. |
+| **Alt+- / Alt+=** | Previous / next model from your account's catalog. |
+| **Alt+Shift+S** | Open app settings, including the optional restore passphrase. |
 
-**Notes for self** contains a text area, close button and small unlabeled checkbox. The checkbox starts off for each new note. Leave it off for a reply; check it before sending to let that task read and edit the current real note file. This permission is separate from the full sidebar’s **Edit this note** option. Its keyboard shortcuts do not open model menus. A numeric selection marker uses model position / thinking level; model positions follow your account's current catalog. Level 0 means a catalog default outside the six mapped levels. Unsupported thinking levels leave your selection unchanged. Alt+Shift+M also cycles to the next model. Selection shortcuts work in both unlocked menus and update both displays. Alt+= also selects the next model. They apply to the next request and do not change a running task.
+Thinking levels are **1 Low · 2 Medium · 3 High · 4 Extra high · 5 Maximum · 6 Ultra**. Unsupported levels leave the selection unchanged. Choose Low for simple requests when supported; higher levels can take longer.
 
-The box closes after sending. A small green dot after **Plain text** in the status bar means a completed reply or note revision is ready. The displayed note stays unchanged until you press **Alt+I**; no sidebar is needed. With the checkbox on, accepted work can change the real file on disk in the background. Alt+I applies that exact revision with ordinary Undo instead of inserting the assistant’s completion message. Manual note changes, a relinked file or newer disk edits keep the revision pending for review. While a task is still running, insertion is unavailable. If a task fails or needs approval, open the sidebar with **Alt+W** to read the details and respond. The app never automatically approves requests.
+The compact title shows **model position / thinking level**. For example, **Notes for self · 3/2** means model number 3 and Medium thinking. Model positions follow your account's current catalog; use **Alt+W → Options** to see their actual names. Level 0 means a catalog default outside the six mapped levels.
 
-After **Alt+Q**, reopen a mode before inserting anything. A configured restore passphrase applies to reopening the compact mode too. These shortcuts work while the app has focus; native Windows dialogs can take priority.
+Model and thinking shortcuts work in either unlocked view, keep both displays synchronized, and apply to the next request. **Alt+, / Alt+.** also select the previous / next model; **Alt+Shift+M** selects the next model.
 
-In the full sidebar, your messages and Codex replies use different colours and role labels. **Edit this note** lets a sidebar task directly revise the current note file, with Undo. The compact checkbox controls compact requests independently. Changing it cannot grant access to a request already running. Compact edits are never automatically shown, even if sidebar editing is on. Higher thinking levels can take longer; choose **Low** for simple edits when supported.
+The small dot is in the **bottom status bar, immediately after Plain text**:
 
-## 4. Notes, files and projects
+| Indicator | Meaning and next step |
+| --- | --- |
+| **Grey** | The request is working. |
+| **Green, Ready** | A completed reply or note revision is waiting. Press **Alt+I** to insert or apply it. |
+| **Green, Done** | A brief completion pulse, lasting about four seconds, after automatic application, including an opted-in automatic task that made no note change. |
+| **Amber** | An error, conflict or approval needs attention. Use **Alt+W** to read the details. |
 
-- Use **File → Open**, **Save** and **Save as** for UTF-8 text files. Ordinary editing and formatting work independently of AI.
-- Click **+** for a separate note and Codex chat.
-- Choose **Browse** in the Reference sidebar to select a project. Codex can work with that project's real files and commands under its normal permissions.
+A Ready indicator remains until its result is consumed or replaced by later work; the Done pulse is temporary. An automatic request that made no note change is still reported as done rather than appearing to stay working.
+
+**Alt+Q hides the dot too.** After hiding, press **Alt+S** to return to compact mode. With automatic application enabled for that accepted request, a hidden completed note revision waits until this unlocked return before appearing. A restore passphrase applies to compact mode as well as the sidebar. Shortcuts work while this app has focus; native Windows dialogs can take priority.
+
+## 5. Try three compact workflows
+
+### Receive a reply without sending the note
+
+1. Press **Alt+S** and leave the first checkbox off.
+2. Type a question and press Enter.
+3. Wait for the green Ready dot. Press **Alt+I** when you want the reply appended to the note.
+4. Use ordinary **Ctrl+Z** to undo the insertion.
+
+### Revise the note, then apply it yourself
+
+1. Write a short practice note. Open **Alt+S**.
+2. Check the **first** box and leave the **second** off.
+3. Ask “Make this note clearer” and press Enter.
+4. The actual file can be edited in the background, but the displayed note stays unchanged.
+5. When the dot is green, press **Alt+I** to apply the exact completed revision, with Undo. It applies the revised note rather than appending the assistant's completion message.
+
+### Let a completed revision appear automatically
+
+1. Open **Alt+S** and check **both** boxes before sending.
+2. Ask for a change and press Enter. While work is in progress, the displayed note stays unchanged.
+3. On completion, the revision appears automatically if compact mode remains unlocked and there is no newer local or disk change. A green Done pulse confirms completion.
+4. If you press **Alt+Q** during the task, the screen and indicator stay frozen. Accepted work continues; press **Alt+S** when you want to return and let the completed revision appear.
+
+Manual edits, changed formatting, a relinked file or newer disk content prevent a conflicting automatic replacement. The pending revision is kept for review in the full sidebar. Automatic insertion does not override these checks.
+
+## 6. Work with real files and projects
+
+- Use **File → Open**, **Save** and **Save as** for UTF-8 text files. Open binds the real file; Save updates that file. Untitled notes get a persistent file in the app's local data folder.
+- Click **+** for another note and independent Codex conversation.
+- In the Reference sidebar, choose **Browse** to select a project folder. Codex can read, edit, create and move the project's actual files and run commands under its normal permissions.
+- Project files save directly as Codex works. **Alt+I is for the displayed note or compact reply; project changes do not wait for it.**
 - Attach supported documents or images in the sidebar, or drag them onto it.
-- The sidebar's **Undo AI edit** restores an accepted note revision after its task finishes, if the file has not changed again. Compact reply insertions and permitted compact revisions also support ordinary Undo.
+- **Undo AI edit** in the sidebar restores an accepted note revision after its task finishes, if the note and file have not changed again. Compact replies and revisions also support ordinary Undo.
 
-Try the shortcuts with an unimportant note first: send, hide, continue typing, reopen, insert, and undo. Closing the entire program can interrupt work; hiding its AI controls does not cancel it.
+Hiding freezes visible AI changes, **not disk or project work**. Another program opening the real file can see accepted disk changes while this window is hidden. Closing the entire app can interrupt a task; using Alt+Q does not cancel it. To stop accepted work, use Stop in the sidebar.
 
-## 5. Keep your own data private
+## 7. Keep your own data private
 
-Your notes and conversations are saved locally under `%LOCALAPPDATA%\NotesWorkspace\DesktopData`. Codex manages sign-in in its own user storage. Requests and attachments you submit are sent through your own Codex account.
+Notes and conversations are saved locally under `%LOCALAPPDATA%\NotesWorkspace\DesktopData`. Codex manages authentication in its own user storage. Requests and attachments you submit use your own account.
 
-**Share the original release ZIP or this repository link. Never share your app-data folder, Codex home, exported backups or test profiles.** Backups can contain your note text and conversations. See [what is included in a public release](PRIVACY.md).
+**Share the original release ZIP or repository link. Do not share your app-data folder, Codex home, exported backups or test profiles.** Backups can contain note text and conversations. The [privacy guide](PRIVACY.md) explains what the public release contains.
 
-The compact UI provides visual discretion. It does not hide running processes, recording, account sign-in pages or activity from system inspection. Notes and backups are not encrypted. An optional restore passphrase prevents accidental reveals; it does not secure an unlocked computer.
+The compact interface provides visual discretion. It does not hide processes, screen recording, sign-in pages or system inspection. Notes and backups are not encrypted. The optional restore passphrase prevents accidental reveals; it does not secure an unlocked computer.
 
 ## Troubleshooting
 
-- **No reply:** open the sidebar and read its status and any approval request. Use Reconnect after checking your account. Stop is available for an active task.
-- **No models:** finish the app's own sign-in, then Reconnect. Available models depend on the account.
-- **No note change:** a completed task reports whether the file actually changed. In compact mode, check the small box before sending an edit request, then use Alt+I when the green dot appears. A request sent before permission was enabled must be stopped and sent again; permissions cannot be added retrospectively.
-- **Pending revision:** the sidebar preserves manual changes rather than overwriting them. Review the revision before applying it.
-- **Blank shortcut icon:** press **Alt+Shift+S → Desktop program → Create desktop shortcut** to recreate it. Keep the installed resources beside the EXE.
+| What you see | What to do |
+| --- | --- |
+| No reply, an amber dot or an approval request | Open **Alt+W** and read the status. Respond to the actual approval if appropriate. The app never accepts it automatically. |
+| Signed in to ChatGPT in a browser, but the app is signed out | Complete **Options → Account → Sign in with ChatGPT** for Codex, then **Reconnect**. |
+| No models or unsupported thinking level | Reconnect after sign-in. Available choices depend on your account and selected model. |
+| Asked to change the note, but only received a reply | Enable the first compact checkbox **before** sending a new edit request. An already running request cannot gain note permission retrospectively. |
+| A green Ready dot but no note change | Use **Alt+I**, or enable the second checkbox before your next note-edit request if you want automatic application. |
+| Task finished but the note is unchanged | Open the sidebar to read the outcome. The task may have made no file change; a conflicting revision may need review. |
+| Pending or conflicting revision | Review it in the sidebar. Your newer local text is retained. Use Apply or Discard deliberately; do not overwrite a file conflict blindly. |
+| File moved or changed elsewhere | Use **Relink moved file** or **Reload from disk**, as appropriate. Local recovery text is retained. |
+| Blank or old desktop icon | Use **Alt+Shift+S → Desktop program → Create desktop shortcut**. If an old taskbar shortcut was pinned, unpin it and pin the recreated shortcut. |
 
 Independent personal-use software, not affiliated with Microsoft or OpenAI.

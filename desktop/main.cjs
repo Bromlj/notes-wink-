@@ -10,9 +10,13 @@ app.setName('Notes Workspace');app.setAppUserModelId(APP_ID);
 const dataRoot=path.resolve(process.env.NOTES_DESKTOP_DATA_DIR||path.join(process.env.LOCALAPPDATA||app.getPath('appData'),'NotesWorkspace','DesktopData'));
 app.setPath('userData',dataRoot);
 protocol.registerSchemesAsPrivileged([{scheme:'notes',privileges:{standard:true,secure:true,supportFetchAPI:true,corsEnabled:true}}]);
-const uiRoot=path.join(__dirname,'ui'),iconPath=app.isPackaged?path.join(path.dirname(process.execPath),'resources','app','ui','icons','notes.ico'):path.join(uiRoot,'icons','notes.ico');
+// Windows can expose an MSIX-redirected AppData alias to this process that
+// Explorer cannot resolve. Give every Shell property the physical executable
+// location, while retaining the normal path if canonicalization is unavailable.
+const executablePath=(()=>{try{return fs.realpathSync.native(process.execPath);}catch{return process.execPath;}})();
+const uiRoot=path.join(__dirname,'ui'),iconPath=app.isPackaged?path.join(path.dirname(executablePath),'resources','app','ui','icons','notes-blue.ico'):path.join(uiRoot,'icons','notes-blue.ico');
 const pages=new Set(['editor.html','options.html','onboarding.html']);
-const assets=new Set(['editor.html','editor.css','options.html','options.css','options.js','onboarding.html','onboarding.js','onboarding.css','core.js','worker.js','client.js','rich-editor.js','editor.js','assistant.js','desktop-ui.js','icons/notes.ico','icons/notes16.png','icons/notes32.png','icons/notes48.png','icons/notes128.png','icons/notes256.png']);
+const assets=new Set(['editor.html','editor.css','options.html','options.css','options.js','onboarding.html','onboarding.js','onboarding.css','core.js','worker.js','client.js','rich-editor.js','editor.js','assistant.js','desktop-ui.js','icons/notes.ico','icons/notes-blue.ico','icons/notes16.png','icons/notes32.png','icons/notes48.png','icons/notes128.png','icons/notes256.png']);
 const windows=new Map(),exportsByWindow=new Map();
 let runtime,service,noteFiles,quitting=false,closing=false,settingsWindow,accountWindow,desktopPrivacyEpoch=0;
 function info(win){if(!win||win.isDestroyed())throw Error('This notepad window has closed.');return {id:win.id,windowId:win.id,url:win.webContents.getURL(),active:win.isFocused(),mutedInfo:{muted:win.webContents.isAudioMuted()},autoDiscardable:false};}
@@ -22,7 +26,7 @@ function concealAuxiliary(){for(const win of [...windows.values()])if(win.webCon
 async function createWindow(page='editor.html',epoch=desktopPrivacyEpoch){
   if(!pages.has(page))throw Error('Unknown desktop page.');
   const win=new BrowserWindow({width:page==='editor.html'?1280:850,height:900,minWidth:680,minHeight:500,show:false,title:page==='editor.html'?'Notepad':'Notes Workspace',icon:nativeImage.createFromPath(iconPath),backgroundColor:'#272727',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,allowRunningInsecureContent:false,devTools:false,spellcheck:true}});
-  windows.set(win.id,win);win.removeMenu();win.setAppDetails({appId:APP_ID,appIconPath:iconPath,appIconIndex:0,relaunchDisplayName:'Notes Workspace',relaunchCommand:'"'+process.execPath+'"'});
+  windows.set(win.id,win);win.removeMenu();win.setAppDetails({appId:APP_ID,appIconPath:iconPath,appIconIndex:0,relaunchDisplayName:'Notes Workspace',relaunchCommand:'"'+executablePath+'"'});
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   win.webContents.on('will-navigate',(event,url)=>{if(url!==ORIGIN+'/'+page)event.preventDefault();});
   win.webContents.on('will-attach-webview',event=>event.preventDefault());
@@ -49,7 +53,7 @@ async function openAccount(){if(accountWindow&&!accountWindow.isDestroyed()){acc
 async function createShortcut(){
   if(!app.isPackaged)throw Error('Create the shortcut from the packaged program.');
   const desktop=app.getPath('desktop'),target=path.join(desktop,'Notes Workspace.lnk');
-  const ok=shell.writeShortcutLink(target,'create',{target:process.execPath,cwd:path.dirname(process.execPath),description:'Notes Workspace',icon:iconPath,iconIndex:0,appUserModelId:APP_ID});
+  const ok=shell.writeShortcutLink(target,'create',{target:executablePath,cwd:path.dirname(executablePath),description:'Notes Workspace',icon:iconPath,iconIndex:0,appUserModelId:APP_ID});
   if(!ok)throw Error('Windows could not create the desktop shortcut.');return {message:'Notes Workspace shortcut created on '+desktop+'.'};
 }
 async function desktopRequest(type,data,win){
@@ -155,4 +159,4 @@ app.on('before-quit',event=>{
   if(quitting)return;event.preventDefault();if(closing)return;closing=true;
   Promise.all([...windows.values()].filter(w=>w.webContents.getURL()===ORIGIN+'/editor.html').map(w=>w.webContents.executeJavaScript('Promise.all([globalThis.NotepadEditor?.flush(),globalThis.NotepadAssistant?.beforeNoteSwitch()])').catch(()=>{}))).then(()=>runtime?.close()).finally(()=>{service?.close();quitting=true;app.quit();});
 });
-module.exports={diagnostics:()=>({appId:APP_ID,iconPath,dataRoot,version:'5.3.1'})};
+module.exports={diagnostics:()=>({appId:APP_ID,executablePath,iconPath,dataRoot,version:'5.3.2'})};

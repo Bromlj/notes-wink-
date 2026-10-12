@@ -1,113 +1,137 @@
-NOTES WORKSPACE DESKTOP 5.3.1 — WINDOWS x64
+NOTES WORKSPACE 5.3.2 — WINDOWS x64
 
-Extract the entire ZIP first. Double-click Install.cmd to copy the program to
-your Windows account and create a Notes Workspace desktop shortcut.
-Or run Notes Workspace.exe directly from the extracted folder.
-Keep its DLLs, resources and other files beside it. No Edge extension, Node,
-Python, API key or development environment is required.
+START HERE
+1. Right-click the downloaded ZIP and choose Extract All.
+2. Open the extracted Notes Workspace folder and double-click Install.cmd.
+3. Open the Notes Workspace desktop shortcut with the blue notepad icon.
+4. Write ordinary notes immediately. For AI, follow the account steps below.
 
-Write ordinary notes immediately. Alt+W opens the Reference panel in the same
-Notepad-style window. Alt+Q hides it and disables new submissions; repeat presses
-never reveal it. Accepted Codex work continues while hidden. Closing the entire
-program ends its Codex process and can interrupt a task. Windows file dialogs
-take keyboard focus; these shortcuts apply while the program has focus.
+Open SETUP.html for the illustrated offline guide, or read it online:
+https://github.com/Bromlj/notes-wink-/blob/main/docs/SETUP.md
 
-AI SETUP
-In the Reference panel choose Options > Account > Sign in with ChatGPT. The
-official sign-in opens in your browser only for authentication. Each person
-uses their own eligible account and Codex allowance. Existing Codex sign-in on
-this Windows account is reused. No sign-in credentials are in this package.
-After sign-in choose Reconnect to load account-provided models and thinking.
-The active task shows its model and thinking level. Higher thinking levels can
-take longer; choose Low in Options for simple edits if your model supports it.
-On the Account page, check Windows project tools. If setup is needed, choose
-Set up Windows sandbox and complete the official Windows administrator prompt.
-This enables Codex's normal protected command environment for project work.
+No separate Node, Python, API key, Edge extension or development environment
+is needed. Keep the entire extracted application folder together if you run
+Notes Workspace.exe directly; its DLLs and resources are required.
 
-Choose a project folder in the Reference panel for reading, editing, creating
-and moving real files, implementing changes, commands and tests. Access requests appear in the panel and wait for your
-decision. A new + note has its own chat and inherits the selected project.
-Attach files or drag them into the Reference panel. Your ordinary note is only
-included when you explicitly enable Edit this note or the compact checkbox.
+CONNECT YOUR OWN ACCOUNT
+Press Alt+W to open the Reference sidebar. Choose Options > Account >
+Sign in with ChatGPT. Complete the official sign-in in your normal browser
+using your own account, return to the app, and choose Options > Reconnect.
+Select an available model and thinking level, then send a short test question.
 
-COMPACT PROMPT MODE
-Alt+S opens Notes for self: a plain text area without AI buttons. Enter sends and
-closes the box; Shift+Enter adds a line. A subtle green status dot means the
-reply is complete. Alt+I inserts that reply at the end of the owning note,
-once; ordinary Undo can remove it. Nothing is inserted automatically.
-The small unlabeled checkbox permits the next compact request to edit the real
-note file. It starts off for each new note and is separate from sidebar editing.
-Checked edits run on disk in the background while the displayed note stays
-frozen. When the green dot appears, Alt+I applies the exact note revision with
-Undo, without opening the sidebar. Manual or newer disk changes require review.
-In either unlocked menu, Alt+1-6 selects Low, Medium, High, Extra high,
-Maximum or Ultra when supported. Alt+minus / Alt+plus (or equals) cycles models; comma / period also work;
-Alt+Shift+M also selects the next model. Numbers mean model position / level.
-Level 0 is another catalog default outside the six mapped thinking levels.
-Unsupported levels leave the selection unchanged. Alt+W opens the full sidebar
-with distinct colours for your messages and Codex replies. Errors or approval
-requests use an amber marker; open the full sidebar to read and respond.
-Alt+Q immediately hides every compact control and indicator without cancelling
-accepted work. Reopen a mode before inserting; the restore passphrase applies.
-Compact requests never automatically show edits, even if Edit this note was
-previously checked. The compact checkbox only grants access before submission;
-it cannot add permission to an already running request. Selected project tools
-and unrelated approvals still apply. Both menus reflect keyboard selections.
+An existing Codex sign-in for this Windows user may already work. A ChatGPT
+website session alone does not sign in this app's Codex runtime. Each person
+uses their own account's available Codex access and allowance. The package
+contains no creator account, credentials, notes or conversations.
 
-REAL DOCUMENTS AND EDIT THIS NOTE (OPTIONAL)
-File > Open links a UTF-8 text file on your drive. Save updates that file;
-Save As chooses a new file. Local recovery remains separate. Untitled notes
-use persistent document files in the local application data folder. The Reference
-panel shows the file path. Codex uses its normal tools on that actual file.
-The selected project and the document's folder are writable for an opted-in
-task. Other project tasks retain their normal project access and approvals.
+For project commands, check Windows project tools on the Account page.
+If requested, choose Set up Windows sandbox and complete the official Windows
+administrator prompt. Normal workspace restrictions and approvals remain on.
 
-The checkbox above the question box starts off. Turn it on before sending a
-request such as "Revise my note to make it clearer." Codex can revise the
-existing note using its real file tools. Visible changes appear as it works.
-Completed tasks report whether the file changed. If no change was made, the
-panel says so rather than silently returning to Ready.
-Alt+Q freezes AI changes to the ordinary note immediately; work continues on a
-persistent real file on disk. Another program viewing that file can see those
-disk changes even while this Notepad screen stays frozen. Alt+W catches up to
-the latest revision. You can still
-type ordinary notes while hidden. If your text changed, review the pending
-revision and explicitly Apply or Discard it; your manual text is kept.
-Apply pending works even when Edit this note is off: confirm to apply that
-one revision without enabling further automatic edits.
-Undo AI edit is available after the task finishes. It restores the real file
-and the whole pre-task note, including its local formatting, only if the file
-has not changed again. Saves and Undo refuse to overwrite newer disk changes;
-local recovery retains your text. Ordinary Ctrl+Z remains available. Each new
-+ note starts with editing disabled.
-Turning the checkbox off pauses note changes without stopping the Codex task.
-It cannot revoke file access already granted to an active turn. Stop the task
-explicitly if you need its disk edits to stop. Missing or moved files need to
-be reopened/relinked; the app does not silently recreate an old filename.
+COMPACT MODE: NOTES FOR SELF
+Alt+S opens a small text area with two unlabeled checkboxes and a close button.
+Enter sends and closes it. Shift+Enter adds a line to the question.
 
-SETTINGS AND BACKUPS
-Alt+Shift+S opens settings. Optional restore passphrase, hide-on-blur, local
-backup export/import and desktop shortcut creation are there.
+The checkboxes, from left to right:
+  FIRST: let the next request read and edit the current real note file.
+  SECOND: automatically apply that request's completed note revision.
+Both start off in every new note and are independent of sidebar Edit this note.
+Turn the first on to make the second available. Settings apply before sending;
+they cannot add permission to an already running request.
+
+FIRST OFF: receive an ordinary reply. A green Ready dot means it is complete.
+Press Alt+I to append the reply to the owning note once, with ordinary Undo.
+Ordinary replies are never inserted automatically.
+
+FIRST ON, SECOND OFF: Codex can edit the real note file in the background.
+The displayed note stays unchanged until completion and your Alt+I shortcut.
+Alt+I applies the exact revised note, not the assistant's completion message.
+
+BOTH ON: on completion, the revised note appears automatically while compact
+mode is unlocked, if no newer local or disk change conflicts. It does not
+stream changes into the note while working. Automatic consent must have been
+set before this request and still be enabled. Turning it off retains the
+revision for manual insertion. Command and access approvals are never accepted
+automatically by either checkbox.
+
+The status dot sits after Plain text in the bottom status bar:
+  GREY: working.
+  GREEN / READY: a reply or revision is waiting for Alt+I.
+  GREEN / DONE: a brief completion pulse, about four seconds, after automatic
+  application or an automatic note task that made no change.
+  AMBER: an error, conflict or approval needs attention; open Alt+W for details.
+
+Alt+Q immediately hides the sidebar, compact box and dot and freezes visible
+AI note updates. Accepted disk and project work continues. Repeated Alt+Q
+presses stay hidden. If automatic work completes while hidden, it waits until
+you reopen and unlock compact mode with Alt+S before updating the displayed
+note. Your optional restore passphrase applies to both views.
+
+MODELS AND THINKING
+In either unlocked view, Alt+1-6 selects:
+  1 Low   2 Medium   3 High   4 Extra high   5 Maximum   6 Ultra
+Unsupported levels leave your current selection unchanged. Low can be useful
+for simple requests; higher thinking levels can take longer.
+Alt+minus / Alt+equals selects the previous / next account-provided model.
+Alt+comma / Alt+period also works; Alt+Shift+M selects the next model.
+The numeric title marker means model position / thinking level. For example,
+3/2 means model number 3 and Medium thinking. Level 0 is a catalog default
+outside the six mapped levels. Alt+W > Options shows actual model names.
+Both views stay synchronized. Choices apply to the next request, not work
+already running. Windows file dialogs can take keyboard focus.
+
+FULL SIDEBAR, REAL NOTES AND PROJECTS
+Alt+W opens Reference with named controls, attachments, activity and approvals.
+Your text and Codex replies have distinct colours and role labels.
+Edit this note above its question box enables direct note revisions, with
+visible progress while the sidebar is shown. Compact editing is independent.
+Alt+W can catch up a sidebar task; compact tasks use Alt+I or opted-in automatic
+application after returning with Alt+S.
+
+File > Open binds a real UTF-8 text file. Save updates it; Save As selects a
+new file. Untitled notes get persistent files in local app data. The Reference
+panel shows the current file path. Ordinary editing works independently of AI.
+
+Choose Browse in the Reference sidebar to select a project folder. Codex can
+read, edit, create and move real project files and run commands under normal
+permissions. PROJECT CHANGES SAVE DIRECTLY; they do not need Alt+I. Attach
+supported documents/images in the sidebar, or drag them onto it.
+Each + tab has an independent note and chat; note-edit permissions start off.
+
+Newer manual text, changed formatting, relinked files or newer disk edits are
+protected against conflicting automatic replacement. Review the pending
+revision in the sidebar. Apply pending can apply one confirmed revision while
+persistent note editing is off. Undo AI edit restores an accepted revision
+after completion if the note and file have not changed again. Ordinary Ctrl+Z
+also works for compact insertion. Reload from disk and Relink moved file are
+explicit recovery actions; the app does not recreate missing paths silently.
+
+Hiding is a DISPLAY control. Another app opening the real file can see accepted
+disk changes while this window is frozen. Use Stop in the sidebar to stop work.
+Closing the whole app, sleep, crashes or connection loss can interrupt tasks.
+
+SETTINGS, PRIVACY AND SHARING
+Alt+Shift+S opens settings, the optional restore passphrase, local backup
+export/import and desktop-shortcut creation.
 Notes and transcripts are saved under:
 %LOCALAPPDATA%\NotesWorkspace\DesktopData
-Codex keeps authentication and its own history in its normal account storage.
-Backups contain private notes and conversations: share the original release ZIP,
-never your data folder or backups. Original browser-extension notes are kept;
-export them using its settings backup control, then import in desktop settings.
+Codex manages its own authentication and configuration under your user account.
+Backups contain private note text and conversations. Share the original release
+ZIP or repository link, never your data folder, .codex folder or backups.
 
-This is an independent app with a Notepad-style interface. It is not Microsoft
-Notepad or the official Codex desktop interface. It uses the official Codex
-agent and bundled CLI, with account-provided models and reasoning levels.
-Some proprietary desktop integrations and media features are not exposed.
-The cover provides visual privacy; system inspection, screen recording,
-file dialogs and account sign-in pages can reveal app use.
+The app provides visual discretion, not encryption or invisibility. Processes,
+screen recording, Windows dialogs, sign-in pages and system inspection can
+reveal use. A restore passphrase prevents accidental reveals; it does not
+secure an unlocked computer.
 
-The window, taskbar and desktop shortcut use the notepad icon. The EXE file
-retains the official Electron runtime's embedded icon and version metadata.
-The runtime is Electron and runs independently of Edge. This release has no code-signing
-certificate; Windows may ask whether you trust the download. Do not disable
-Windows protections if your computer blocks it.
+The desktop shortcut, window and taskbar use a blue notepad icon. For a stale
+icon, use Settings > Desktop program > Create desktop shortcut. Unpin an old
+taskbar shortcut and pin the recreated shortcut if necessary. The EXE retains
+the vendor Electron runtime's embedded icon and metadata; its bytes are not
+resource-modified. This release has no custom signing certificate, and Windows
+reputation or managed-computer policies can vary.
 
-See TEST_REPORT.md for measured verification and limits. Runtime notices are
-included in licenses/, the root LICENSE and LICENSES.chromium.html, and the
-extraction libraries' own license files under resources/native/node_modules.
+TEST_REPORT.md records the 5.3.2 checks and their limits: 195 helper tests,
+64 renderer checks and 101 packaged-app checks, 360 in total. Runtime licenses
+and notices are included. Independent software, not affiliated with Microsoft
+or OpenAI; this is not Microsoft Notepad or the official Codex desktop UI.

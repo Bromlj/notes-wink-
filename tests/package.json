@@ -1,6 +1,6 @@
 {
   "name": "notes-workspace-tests",
-  "version": "5.3.1",
+  "version": "5.3.2",
   "private": true,
   "description": "Optional test driver for the packaged Windows application",
   "devDependencies": {

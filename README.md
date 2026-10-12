@@ -1,12 +1,17 @@
 # Notes Workspace
 
-A Windows notepad with Codex in an optional sidebar or a small shortcut-opened prompt box. Keep a reply in the background, then insert it into the note only when you choose. The full sidebar supports real project files, commands, attachments, account-provided models and thinking levels, and opt-in note revisions with undo.
+A Windows notepad with Codex in an optional sidebar or a small **Notes for self** box. Write ordinary notes, work on real project files, choose account-provided models and thinking levels, and revise the current note with Undo. Compact requests can wait for your insert shortcut or apply a completed note revision automatically when you opt in.
 
-**Start here: [How to set up your own account](docs/SETUP.md).** Read [what is public and what stays local](docs/PRIVACY.md) before sharing your own backups or data folders.
+**Start here: [Illustrated setup guide](docs/SETUP.md).** Each person signs in with their own account. Read [what is public and what stays local](docs/PRIVACY.md) before sharing your own backups or data folders.
 
 ## Install the Windows app
 
-Download the Windows x64 ZIP from [Releases](https://github.com/Bromlj/notes-wink-/releases/latest), extract the **whole ZIP**, then run `Install.cmd` inside the extracted `Notes Workspace` folder. It installs for your Windows account and creates a notepad desktop shortcut. No separate Node, Python, development environment or API key is needed to use the app.
+1. Download the Windows x64 ZIP from [the latest release](https://github.com/Bromlj/notes-wink-/releases/latest).
+2. Right-click it in File Explorer and choose **Extract All**.
+3. Open the extracted **Notes Workspace** folder and run **Install.cmd**.
+4. Open the desktop shortcut with the blue notepad icon. Press **Alt+W → Options → Account → Sign in with ChatGPT**, complete your own sign-in, then return and choose **Reconnect**.
+
+The ZIP includes an illustrated offline `SETUP.html`. No separate Node, Python, development environment, Edge extension or API key is needed to use the app.
 
 Alternatively, if you have Git:
 
@@ -16,28 +21,45 @@ cd notes-wink-
 .\Get-App.cmd
 ```
 
-The downloader gets the tested Windows release; Git only downloads the small source repository. The large application runtimes are distributed as release assets rather than Git objects.
+The downloader gets the Windows release. Git only downloads the small source repository; the large application runtimes are release assets rather than Git objects.
 
-Each person signs in with **their own ChatGPT account** through the Account page. AI usage comes from the account's available Codex allowance; this is not the normal ChatGPT website or a transfer of its chat history. The official Codex runtime is bundled.
+AI usage comes from your account's available **Codex allowance**. A ChatGPT browser session alone does not authenticate the app's Codex runtime. The app does not transfer another person's subscription, credentials or website conversations.
 
-## Use it
+## Compact mode
 
-- Write and format ordinary notes normally. **File > Open** binds a real UTF-8 text file; **Save** updates that same file, and **Save as** chooses a new file. Untitled notes get a persistent `Documents/<note-id>/note.txt` inside the app's local data folder.
-- **Alt+W** reveals the AI panel; **Alt+Q** hides it immediately. Hiding does not cancel accepted work.
-- **Alt+S** opens **Notes for self**, a plain text area with no visible AI controls. Enter sends and closes the box; a subtle green dot means the reply is ready. **Alt+I** inserts that completed reply once. The small unlabeled checkbox permits the next request to edit the current real note file; Alt+I then applies its exact revision with Undo. The displayed note remains unchanged until you choose to apply or insert; actual disk edits can continue in the background.
-- In either unlocked menu, **Alt+1–6** selects Low, Medium, High, Extra high, Maximum or Ultra thinking when supported. **Alt+− / Alt++** cycles account-provided models; comma/period also work; **Alt+Shift+M** also selects the next model. A numeric model/level marker confirms your selection. Both menus stay in sync; the full sidebar retains named model and thinking menus.
-- **Alt+Shift+S** opens settings, including an optional restore passphrase.
-- The **+** button creates a separate note and Codex chat. The project chooser is visible in the panel: click **Browse** to select a folder. Codex can edit that project's actual files and run commands using its normal sandbox and approval controls.
-- Choose models and thinking levels from the catalog returned by your signed-in account. Attach supported documents or images with the attachment control.
-- Your messages and AI replies have distinct colours and role labels in the full sidebar.
-- Active tasks show their selected model and thinking level. Higher thinking levels can take longer; choose Low in Options for simple edits when supported. Completed note-edit tasks report whether the file actually changed.
-- Enable **Edit this note** before asking Codex to revise the current note. This defaults off for each note/chat. Codex edits the actual bound file, and its progress appears in the note while visible.
-- **Alt+Q freezes the visible note and its recovery text, while Codex continues changing the actual disk file in the background.** Another program opening that file can see those disk changes. **Alt+W** catches sidebar tasks up to the latest revision; compact tasks wait for Alt+I. If you typed meanwhile, review and explicitly apply or discard the pending revision.
-- **Undo AI edit** becomes available after the task completes. It restores the pre-task file contents and rich note, provided neither has changed since the AI revision. It turns automatic note editing off and refuses to overwrite later local or external changes.
-- **Apply pending** can apply one staged revision even when **Edit this note** is off. Confirm the replacement when asked. This one-time action leaves automatic note editing off; you can undo it afterward.
-- If the disk file changed elsewhere, a guarded **Save** reports the conflict and keeps your local recovery text. Use **Reload from disk** to explicitly take the disk version. If the file moved or was renamed, use **Relink moved file** to select its current location; the app does not silently recreate the old path.
+![Notes for self with made-up note text and both compact checkboxes selected](docs/images/notes-for-self.png)
 
-The cover provides visual privacy. Notes, actual document files and local backups are not encrypted, and the app does not hide its processes or system activity. A restore passphrase prevents accidental reveals; it does not secure an unlocked computer.
+The two small checkboxes have no visible labels. **The first permits the next request to read and edit the current real note. The second permits automatic application of its completed revision.** Both start off for a new note; they are independent of the sidebar's Edit this note setting.
+
+| Shortcut | Action |
+| --- | --- |
+| **Alt+S** | Open/close Notes for self. Enter sends and closes it; Shift+Enter adds a line. |
+| **Alt+I** | Append a completed compact reply once, or apply its permitted note revision once, with Undo. |
+| **Alt+Q** | Hide every AI control and indicator, and freeze visible AI note changes. Accepted work continues. |
+| **Alt+W** | Open the full Reference sidebar, with distinct colours and labels for your text and Codex replies. |
+| **Alt+1–6** | Low, Medium, High, Extra high, Maximum or Ultra thinking, when supported. |
+| **Alt+- / Alt+=** | Previous / next model. Both unlocked views stay synchronized. |
+| **Alt+Shift+S** | Settings, optional restore passphrase, backups and desktop shortcut creation. |
+
+A small dot after **Plain text** in the bottom status bar is grey while working, green when ready, and amber when attention is needed. **Alt+I** handles a ready result without opening the sidebar. A green **Done** pulse lasts about four seconds after automatic application, including an automatic note task that made no change.
+
+Automatic application works only for a completed, authorized **note revision**, with consent set before sending and still enabled. It does not stream changes into your note or append ordinary replies automatically. If you hide with Alt+Q, a completed revision waits until you return with Alt+S. Newer local or disk changes remain protected. Command and access approvals always wait for your decision.
+
+The numeric title marker means **model position / thinking level**; model positions follow the account catalog. The full sidebar shows actual names. Unsupported thinking levels leave the current choice unchanged. Comma/period also cycle models, and Alt+Shift+M selects the next model. Settings apply to the next request; they do not change a running task.
+
+See the [setup guide](docs/SETUP.md) for checkbox examples, screenshots, model numbering and troubleshooting.
+
+## Notes and project work
+
+- **File → Open** binds a real UTF-8 text file. Save updates it; Save as chooses another file. Untitled notes receive persistent document files in the app's local data folder.
+- **+** creates another note and independent Codex chat. Choose **Browse** in the Reference sidebar to select a project folder.
+- Codex can edit, create and move the project's actual files, run commands and use attachments under its normal sandbox and approval controls. Project changes save directly; **Alt+I is not needed for project files**.
+- The sidebar's **Edit this note** enables real note-file revisions with visible progress. Compact editing has its own checkbox and waits for completion before manual or opted-in automatic application.
+- **Alt+Q freezes the displayed note and indicator, while accepted disk/project work continues.** Another program viewing the file can see those disk changes. Stop the task explicitly to stop its work.
+- **Undo AI edit** restores an accepted note revision after completion if neither the note nor disk file changed again. Ordinary Undo also works for compact insertion. Conflicting local text stays in recovery rather than being silently overwritten.
+- **Apply pending** in the sidebar can apply one confirmed revision even when persistent note editing is off. **Reload from disk** and **Relink moved file** are deliberate recovery actions for external changes or moved documents.
+
+The interface provides visual discretion. It does not encrypt notes or conceal running processes and system activity. A restore passphrase prevents accidental reveals; it does not secure an unlocked computer.
 
 ## Build from source
 
@@ -49,7 +71,7 @@ npm ci --prefix desktop
 node desktop/build.cjs
 ```
 
-The program is generated at `desktop/dist/Notes Workspace/Notes Workspace.exe`. Run `Install.cmd` from that generated folder to install your build. `desktop/Install.cmd` in the source tree is a packaging input, not a ready-to-run installer.
+The program is generated at `desktop/dist/Notes Workspace/Notes Workspace.exe`. Run Install.cmd from that generated folder to install your build. `desktop/Install.cmd` in the source tree is a packaging input, not a ready-to-run installer.
 
 To create a release ZIP with an embedded per-file manifest and SHA-256 verification:
 
@@ -57,19 +79,19 @@ To create a release ZIP with an embedded per-file manifest and SHA-256 verificat
 python tests/build-desktop-release.py
 ```
 
-The ZIP and its checksum are written to `release/`. The build copies explicit application files, licensed third-party runtimes and notices. It does not package your installed app data, browser profile, account credentials, notes or test profiles.
+The ZIP and checksum are written to `release/`. The build copies explicit app files, licensed runtimes and notices. It does not package installed app data, browser profiles, account credentials, notes or test profiles.
 
 ## Tests
 
-The 5.3.1 update passed **184 helper tests, 64 renderer checks, 124 packaged-app checks and 3 additional live note-scope checks**, including real compact note edits in existing conversations without extra folder approval, hidden completion, explicit application and exact rich Undo. The [test report](desktop/TEST_REPORT.md) records the measured scope and limits.
+The 5.3.2 update passed **360 checks: 195 helper tests, 64 renderer checks and 101 packaged-app checks**. These cover compact note permissions, manual and automatic application, hidden completion, conflicts, rich Undo, model shortcuts, account isolation and Windows icon handling. The [test report](desktop/TEST_REPORT.md) records the measured scope and limits.
 
-After installing the source dependencies, run the helper tests without signing in:
+After installing source dependencies, run helper tests without signing in:
 
 ```powershell
 node --test tests/core.test.cjs tests/direct.test.cjs tests/agent.test.cjs tests/desktop-service.test.cjs tests/desktop-backup.test.cjs tests/desktop-storage.test.cjs tests/desktop-note-files.test.cjs tests/desktop-direct-host.test.cjs tests/desktop-note-file-races.test.cjs tests/note-host.test.cjs tests/worker-note-edit.test.cjs tests/desktop-icon.test.cjs
 ```
 
-For packaged application tests, first build the app and install the test driver:
+For packaged application tests, build the app and install the test driver first:
 
 ```powershell
 npm install --prefix tests
@@ -81,11 +103,13 @@ node tests/desktop-first-run.cjs
 node tests/desktop-note-feedback-e2e.cjs
 node tests/desktop-quiet-e2e.cjs
 node tests/desktop-quiet-note-e2e.cjs
+node tests/desktop-quiet-auto-e2e.cjs
+node tests/desktop-icon-e2e.cjs
 ```
 
-These scripts launch the built application with disposable profiles and actual disposable text files. `desktop-first-run.cjs` uses the real bundled Codex runtime with an empty sign-in profile. The other scripts use the included app-server fixture. Test screenshots, document bindings, profiles and result files are generated locally and ignored by Git.
+These scripts use disposable profiles and text files. `desktop-first-run.cjs` uses the real bundled Codex runtime with an empty sign-in profile; deterministic editor tests use the included app-server fixture. Generated test profiles, logs and screenshots are ignored by Git. The two documentation pictures above and in the setup guide are explicit synthetic examples.
 
-The following **live tests use your current Codex sign-in and account allowance**. They make real requests, but restrict edits to disposable projects created by the tests and do not automatically approve requests for additional access:
+The following **live tests use your current Codex sign-in and account allowance**. They make real requests restricted to disposable projects and do not automatically approve additional access:
 
 ```powershell
 node tests/desktop-live.cjs
@@ -97,12 +121,12 @@ node tests/desktop-quiet-note-live.cjs
 node tests/desktop-note-scope-live.cjs
 ```
 
-Optional overrides: `PLAYWRIGHT_MODULE` selects an existing Playwright installation, `NOTES_DESKTOP_EXE` selects a built executable, and `NOTES_TEST_NODE` selects Node for deterministic fixtures. Defaults work with the commands above.
+Optional overrides: `PLAYWRIGHT_MODULE` selects an existing Playwright installation, `NOTES_DESKTOP_EXE` selects a built executable, and `NOTES_TEST_NODE` selects Node for deterministic fixtures.
 
 ## Compatibility and licenses
 
-The window, taskbar and desktop shortcut use the notepad icon. The EXE retains the official Electron runtime's embedded icon and version metadata: its bytes are preserved because Windows blocked a resource-modified launcher on the verification machine.
+The desktop shortcut, window and taskbar use the blue notepad icon. The EXE preserves the vendor Electron runtime's embedded icon and version metadata; its executable bytes are not resource-modified. An old pinned taskbar shortcut may need to be unpinned and recreated.
 
-This release has no custom code-signing certificate. Windows reputation warnings and managed policies can vary. Fresh human sign-in, first-time administrator sandbox setup and other computers were not fully tested; the test results are not a guarantee of perfection or compatibility with future service changes.
+This release has no custom code-signing certificate. Windows reputation warnings and managed policies can vary. Fresh human sign-in, first-time administrator sandbox setup and every other computer were not fully tested. Results describe the performed checks, not a guarantee of perfection or future compatibility.
 
-Notes Workspace source is [MIT licensed](LICENSE.txt). Bundled third-party components retain their own licenses; see [desktop/licenses](desktop/licenses) and the notices preserved with the release runtimes. Independent personal-use software; not affiliated with OpenAI or Microsoft.
+Notes Workspace source is [MIT licensed](LICENSE.txt). Bundled components retain their licenses; see [desktop/licenses](desktop/licenses) and release runtime notices. Independent personal-use software, not affiliated with OpenAI or Microsoft.

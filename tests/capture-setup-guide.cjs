@@ -1,0 +1,15 @@
+'use strict';
+// Documentation images use only a synthetic fixture and a separate empty
+// Codex home. No installed user profile, sign-in or conversation is opened.
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const {_electron}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const root=path.resolve(__dirname,'..'),exe=path.join(root,'desktop/dist/Notes Workspace/Notes Workspace.exe'),output=path.join(root,'docs/images');
+fs.mkdirSync(output,{recursive:true});
+async function instance(fixture){const data=fs.mkdtempSync(path.join(__dirname,'setup-guide-data-')),home=path.join(data,'empty-codex-home');fs.mkdirSync(home);const env={...process.env,NOTES_DESKTOP_DATA_DIR:data,CODEX_HOME:home};delete env.ELECTRON_RUN_AS_NODE;delete env.NOTES_CODEX;
+ if(fixture){fs.mkdirSync(path.join(data,'Conversations'));fs.copyFileSync(path.join(__dirname,'desktop-app-server-fixture.cjs'),path.join(data,'Conversations/app-server'));env.NOTES_CODEX=process.env.NOTES_TEST_NODE||process.execPath;}
+ const app=await _electron.launch({executablePath:exe,args:[],env,timeout:45000});const page=await app.firstWindow();await page.waitForFunction(()=>window.notepadReady);return {app,page};}
+(async()=>{let current;try{
+ current=await instance(true);let {app,page}=current;await page.locator('#editor').fill('Weekly notes\nPlan the next session.');await page.evaluate(()=>NotepadEditor.flush());await page.locator('#editor').press('Alt+s');await page.waitForFunction(()=>!document.querySelector('#quiet-question').disabled,{},{timeout:30000});await page.locator('#quiet-edit-note').check();await page.waitForFunction(()=>!document.querySelector('#quiet-auto-note').disabled);await page.locator('#quiet-auto-note').check();await page.waitForFunction(()=>document.querySelector('#quiet-auto-note').checked);await page.locator('#quiet-question').fill('Make this note clearer.');await page.locator('#quiet-prompt').screenshot({path:path.join(output,'notes-for-self.png')});assert.equal(await page.locator('#assistant-panel').isHidden(),true);await app.close();current=null;
+ current=await instance(false);({app,page}=current);await page.locator('#editor').press('Alt+w');await page.waitForFunction(()=>/sign in with ChatGPT/i.test(document.querySelector('#assistant-status').textContent),{},{timeout:80000});await page.locator('#assistant-options').click();const opened=app.waitForEvent('window');await page.getByRole('button',{name:'Account…',exact:true}).click();const account=await opened;await account.waitForFunction(()=>document.querySelector('#account-status').textContent.includes('Not signed in'),{},{timeout:30000});await account.locator('section[aria-labelledby="account-heading"]').screenshot({path:path.join(output,'own-account.png')});assert.equal(await account.locator('#account-logout').isHidden(),true);
+ console.log(JSON.stringify({screenshots:2,source:'synthetic notes and empty signed-out Codex profile',personalProfileOpened:false}));
+}finally{await current?.app.close();}})().catch(error=>{console.error(error.stack);process.exitCode=1;});

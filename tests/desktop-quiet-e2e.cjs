@@ -29,8 +29,9 @@ async function screenshot(name){await page.screenshot({path:path.join(ROOT,'docs
 async function selection(model,effort){await until(()=>store().codexSelection?.model===model&&store().codexSelection?.effort===effort,'keyboard selection '+model+'/'+effort);const index=model==='fixture-codex-second'?2:1,slot={low:1,medium:2,high:3,xhigh:4,max:5,ultra:6}[effort];await until(async()=>await page.locator('#quiet-title').textContent()===`Notes for self · ${index}/${slot}`,'numeric selection feedback');}
 async function barePrompt(){
  const visible=await page.locator('#quiet-prompt').evaluate(box=>({text:box.innerText,buttons:[...box.querySelectorAll('button')].filter(e=>e.getClientRects().length).map(e=>e.textContent.trim()),inputs:[...box.querySelectorAll('input,textarea,select')].filter(e=>e.getClientRects().length).map(e=>e.id)}));
- assert.match(visible.text.trim(),/^Notes for self(?: · [1-9]\d*\/[0-6])?\s*×$/);assert.deepEqual(visible.buttons,['×']);assert.deepEqual(visible.inputs,['quiet-edit-note','quiet-question']);
+ assert.match(visible.text.trim(),/^Notes for self(?: · [1-9]\d*\/[0-6])?\s*×$/);assert.deepEqual(visible.buttons,['×']);assert.deepEqual(visible.inputs,['quiet-edit-note','quiet-auto-note','quiet-question']);
  assert.equal(await page.locator('#quiet-edit-note').getAttribute('title'),null);assert.equal(await page.locator('label[for="quiet-edit-note"]').count(),0);assert.equal(await page.locator('#quiet-edit-note').isChecked(),false);
+ assert.equal(await page.locator('#quiet-auto-note').getAttribute('title'),null);assert.equal(await page.locator('label[for="quiet-auto-note"]').count(),0);assert.equal(await page.locator('#quiet-auto-note').isChecked(),false);assert.equal(await page.locator('#quiet-auto-note').isDisabled(),true);
  assert(['','Write a note…'].includes(await page.locator('#quiet-question').getAttribute('placeholder')||''));
  assert.equal(await page.locator('#quiet-controls').isVisible(),false);
  assert.doesNotMatch(visible.text,/AI|Codex|ChatGPT|Reference|Send|Model|Thinking|Enter/i);

@@ -20,7 +20,7 @@ class CodexService extends EventEmitter {
     super();
     this.noteFiles=options.noteFiles;
     this.defaultProject=options.dataRoot?path.join(options.dataRoot,'Conversations'):null;this.activeNoteGrants=new Map();
-    this.codex=options.codexInstance||new Codex({dataRoot:options.dataRoot,codexPath:options.codexPath,noteFiles:this.noteFiles,version:options.version||'5.3.1'});
+    this.codex=options.codexInstance||new Codex({dataRoot:options.dataRoot,codexPath:options.codexPath,noteFiles:this.noteFiles,version:options.version||'5.3.2'});
     this.noteFiles?.setWriteGuard((noteId,file)=>this.assertNoteIdle(noteId,file));
     this.updates=new Map();this.revision=0;this.pendingLogin=null;this.loginError=null;this.sandboxPending=false;this.sandboxError=null;
     this.codex.on('update',event=>this.record(event));

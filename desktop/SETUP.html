@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>Notes Workspace 5.3.2 — Setup guide</title>
+  <style>
+    :root { color-scheme:light; font:16px/1.6 'Segoe UI Variable','Segoe UI',system-ui,sans-serif; color:#242424; background:#f4f5f7; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:28px 16px; }
+    main { max-width:850px; margin:auto; padding:34px 38px; border:1px solid #dde0e5; border-radius:12px; background:#fff; }
+    header { padding-bottom:22px; border-bottom:1px solid #e3e5e9; }
+    h1 { margin:4px 0 10px; font-size:30px; line-height:1.25; font-weight:650; }
+    h2 { margin:30px 0 10px; font-size:21px; line-height:1.35; }
+    h3 { margin:20px 0 7px; font-size:17px; }
+    p { margin:10px 0; }
+    ol,ul { padding-left:24px; margin:10px 0; }
+    li { margin:7px 0; }
+    a { color:#075fad; text-underline-offset:3px; overflow-wrap:anywhere; }
+    a:focus-visible { outline:2px solid #075fad; outline-offset:3px; }
+    kbd,code { font: .9em/1.5 Consolas,'Cascadia Mono',monospace; background:#f1f3f5; border:1px solid #e0e3e7; border-radius:4px; padding:1px 5px; }
+    kbd { white-space:nowrap; }
+    .version,.caption { color:#5b6068; font-size:14px; }
+    .version { margin:0; }
+    .intro { max-width:680px; }
+    .callout { margin:16px 0; padding:12px 16px; border-left:3px solid #4c86b8; background:#f1f6fb; border-radius:0 5px 5px 0; }
+    figure { margin:18px 0; }
+    figure img { display:block; max-width:100%; height:auto; border:1px solid #d8dbe0; border-radius:7px; }
+    figcaption { margin-top:7px; color:#5b6068; font-size:14px; }
+    .table-wrap { max-width:100%; overflow-x:auto; margin:14px 0; }
+    table { border-collapse:collapse; width:100%; text-align:left; font-size:15px; }
+    caption { text-align:left; font-weight:600; padding-bottom:8px; }
+    th,td { padding:10px 12px; vertical-align:top; border:1px solid #dfe2e6; }
+    th { background:#f3f5f7; font-weight:600; }
+    td:first-child { width:30%; }
+    footer { margin-top:30px; padding-top:17px; border-top:1px solid #e3e5e9; color:#5b6068; font-size:14px; }
+    @media(max-width:600px) { body { padding:0; } main { padding:24px 18px; border:0; border-radius:0; } h1 { font-size:26px; } th,td { padding:8px; } }
+    @media print { :root { background:#fff; } body { padding:0; } main { max-width:none; border:0; padding:0; } h2,h3,figure { break-inside:avoid; } a { color:inherit; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="version">Notes Workspace · Windows · 5.3.2</p>
+    <h1>Set up your own notepad and AI</h1>
+    <p class="intro">Write ordinary notes, open a full Codex sidebar, or use the small <strong>Notes for self</strong> box. Every person signs in with their own account.</p>
+    <p>No separate Python, Node, development environment or API key is needed.</p>
+  </header>
+
+  <section aria-labelledby="install">
+    <h2 id="install">1. Install the Windows app</h2>
+    <ol>
+      <li>Open <a href="https://github.com/Bromlj/notes-wink-/releases/latest">the latest Windows release</a> and download the <strong>5.3.2 Windows ZIP</strong>.</li>
+      <li>Right-click the ZIP and choose <strong>Extract All</strong>. Extract the entire package; keep its program files and <code>resources</code> folder together.</li>
+      <li>Open the extracted <strong>Notes Workspace</strong> folder and double-click <code>Install.cmd</code>.</li>
+      <li>Open the new <strong>blue notepad desktop shortcut</strong>. You can start writing notes immediately.</li>
+    </ol>
+    <p class="callout">Do not launch the app from inside the ZIP or copy only the EXE. Its supporting files must stay beside it.</p>
+  </section>
+
+  <section aria-labelledby="account">
+    <h2 id="account">2. Connect your own account</h2>
+    <ol>
+      <li>Press <kbd>Alt+W</kbd> to open the full Reference sidebar.</li>
+      <li>Choose <strong>Options → Account → Sign in with ChatGPT</strong>.</li>
+      <li>Complete the official sign-in in your normal browser using <strong>your own account</strong>, then return to Notes Workspace.</li>
+      <li>Choose <strong>Options → Reconnect</strong>. Select an available model and thinking level, then send a short test question.</li>
+    </ol>
+    <figure>
+      <img src="../docs/images/own-account.png" width="1320" height="604" alt="Account page before sign-in, showing Sign in with ChatGPT and Check again buttons.">
+      <figcaption>This example is signed out. No person's account or credentials are shown.</figcaption>
+    </figure>
+    <p>A ChatGPT website login by itself does not sign in the app's Codex runtime. An existing Codex sign-in for your Windows user may already be available. The app uses your own account's available Codex access, models and usage limits.</p>
+    <p>For project commands, open the Account page's <strong>Windows project tools</strong> section. If prompted, choose <strong>Set up Windows sandbox</strong> and complete the official Windows administrator prompt.</p>
+  </section>
+
+  <section aria-labelledby="compact">
+    <h2 id="compact">3. Use Notes for self</h2>
+    <p>Press <kbd>Alt+S</kbd> to open the small box. Type a request and press <kbd>Enter</kbd> to send and close it. <kbd>Shift+Enter</kbd> adds a new line.</p>
+    <figure>
+      <img src="../docs/images/notes-for-self.png" width="700" height="274" alt="Notes for self with its two small checkboxes checked and the synthetic example Make this note clearer.">
+      <figcaption>The example shows both boxes on. Both start off for each new note.</figcaption>
+    </figure>
+    <div class="table-wrap">
+      <table>
+        <caption>The two small checkboxes, from left to right</caption>
+        <thead><tr><th scope="col">Checkbox</th><th scope="col">What it enables</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">First · left</th><td>Let the next compact request read and edit this note's real file. This is separate from <strong>Edit this note</strong> in the full sidebar.</td></tr>
+          <tr><th scope="row">Second · right</th><td>Automatically show a completed, permitted note revision while quiet mode is unlocked. The first box must be on to enable this control.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Choose the boxes <strong>before sending</strong>. They cannot add permissions to a request already running. Turning off editing does not cancel file changes already accepted; the automatic preference is retained but gives new requests no note access while the first box is off.</p>
+    <ul>
+      <li><strong>Both off:</strong> get a normal reply. When the green dot appears, <kbd>Alt+I</kbd> appends that completed reply to the note once.</li>
+      <li><strong>First box only:</strong> Codex can edit the real note file in the background. The displayed note stays unchanged until <kbd>Alt+I</kbd> applies its completed revision once. <kbd>Ctrl+Z</kbd> undoes it.</li>
+      <li><strong>Both on:</strong> a completed note revision appears automatically while quiet mode is unlocked. A brief green pulse means done, including a task that made no note changes. No partial edits or completion message are inserted.</li>
+    </ul>
+    <p>The tiny status dot sits in the bottom bar beside <strong>Plain text</strong>: grey means working, green means ready or done, and amber means attention is needed. Open <kbd>Alt+W</kbd> to inspect a conflict, error or approval request. The app does not automatically accept command or additional-access approvals.</p>
+  </section>
+
+  <section aria-labelledby="hide">
+    <h2 id="hide">4. Hide and restore</h2>
+    <p>Press <kbd>Alt+Q</kbd> to hide every AI control and the status dot, and freeze the <strong>displayed note</strong>. Accepted work can continue changing the note file or project files on disk.</p>
+    <p>A hidden automatic revision waits until you restore quiet mode with <kbd>Alt+S</kbd>. It then applies only if the note, file and revision still match. With automatic mode off, restore and press <kbd>Alt+I</kbd> when ready. Your manual changes and newer disk edits are preserved for review instead of being overwritten.</p>
+    <p>Hiding does not cancel work. Closing the whole program can interrupt it. Shortcuts need the app to have focus, and native file dialogs can take priority. If you set a restore passphrase, reopening either AI mode asks for it.</p>
+  </section>
+
+  <section aria-labelledby="projects">
+    <h2 id="projects">5. Work with notes and projects</h2>
+    <ul>
+      <li>Use <strong>File → Open</strong>, <strong>Save</strong> and <strong>Save as</strong> for ordinary text files.</li>
+      <li>Click <strong>+</strong> for a new note with its own separate chat. The two compact checkboxes start off again.</li>
+      <li>Press <kbd>Alt+W</kbd> and choose <strong>Browse</strong> to select a project folder. Codex can edit, move and implement its real files directly under its normal permissions. Project-file changes do not wait for <kbd>Alt+I</kbd>.</li>
+      <li>Attach supported documents or images in the full sidebar, or drag them onto it. Your text and AI replies have different colours and role labels there.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="shortcuts">
+    <h2 id="shortcuts">Shortcut reference</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><th scope="row"><kbd>Alt+S</kbd></th><td>Open or close Notes for self.</td></tr>
+          <tr><th scope="row"><kbd>Alt+W</kbd></th><td>Open the full Reference sidebar.</td></tr>
+          <tr><th scope="row"><kbd>Alt+Q</kbd></th><td>Hide AI controls and the dot; freeze visible note updates.</td></tr>
+          <tr><th scope="row"><kbd>Alt+I</kbd></th><td>Insert a completed compact reply or apply its permitted note revision once.</td></tr>
+          <tr><th scope="row"><kbd>Alt+1–6</kbd></th><td>1 Low · 2 Medium · 3 High · 4 Extra high · 5 Maximum · 6 Ultra, when supported.</td></tr>
+          <tr><th scope="row"><kbd>Alt+-</kbd> / <kbd>Alt+=</kbd></th><td>Previous / next model. <kbd>Alt++</kbd>, <kbd>Alt+,</kbd> and <kbd>Alt+.</kbd> also work.</td></tr>
+          <tr><th scope="row"><kbd>Ctrl+Z</kbd></th><td>Undo a note edit.</td></tr>
+          <tr><th scope="row"><kbd>Alt+Shift+S</kbd></th><td>Open app settings, including the optional restore passphrase.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Model and thinking shortcuts work in <strong>both unlocked AI modes</strong>, keep their displays synchronized and affect the next request. They do not change a running task. Unsupported thinking levels leave the selection unchanged.</p>
+    <p><strong>Notes for self · 3/2</strong> means model position 3 and thinking level 2. Model positions follow your account's current model list; use the full sidebar's Options to see their names. A level of 0 means a catalog default outside the six mapped levels.</p>
+  </section>
+
+  <section aria-labelledby="update">
+    <h2 id="update">Update, share and troubleshoot</h2>
+    <p><strong>Update:</strong> close Notes Workspace, extract the new release and run its <code>Install.cmd</code>. Installation replaces program files while keeping your local notes and settings.</p>
+    <p><strong>Old or blank icon:</strong> use <strong>Alt+Shift+S → Desktop program → Create desktop shortcut</strong>. If an old taskbar pin still shows the previous icon, unpin it, launch the new blue desktop shortcut and pin that window again.</p>
+    <p><strong>No reply or no models:</strong> use <strong>Alt+W → Options → Account</strong> to check your own sign-in, then <strong>Reconnect</strong>. Read any pending approval or error in the full sidebar.</p>
+    <p><strong>Amber dot or pending revision:</strong> review it in the full sidebar. Manual edits, file relinking or newer disk changes can prevent an automatic revision. Your existing draft is kept.</p>
+    <p><strong>Share:</strong> send friends the clean release ZIP or repository link so they can sign in themselves. Do not share your app-data folder, Codex account files, local backups or exported chats.</p>
+    <p class="callout">The compact interface provides visual discretion. It does not conceal processes, recordings, sign-in pages or system inspection. Local notes and backups are not encrypted.</p>
+    <p><a href="https://github.com/Bromlj/notes-wink-/releases/latest">Latest download</a> · <a href="https://github.com/Bromlj/notes-wink-/blob/main/docs/SETUP.md">Online setup guide</a> · <a href="https://github.com/Bromlj/notes-wink-/blob/main/docs/PRIVACY.md">Release contents and privacy</a></p>
+  </section>
+
+  <footer>
+    <p>This guide and its pictures work offline. The links above open online pages only when you choose them. Screenshots use a disposable signed-out profile or synthetic example text; no personal account, notes or chats are included.</p>
+    <p>Independent personal-use software. Not affiliated with Microsoft or OpenAI.</p>
+  </footer>
+</main>
+</body>
+</html>

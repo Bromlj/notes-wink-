@@ -1,79 +1,91 @@
-NOTES WORKSPACE 5.3.1 — WINDOWS DESKTOP APP
+NOTES WORKSPACE 5.3.2 — SHARE WITH FRIENDS
 
-Share the release ZIP, not your installed app-data folder.
+Share this repository or the ORIGINAL release ZIP:
+https://github.com/Bromlj/notes-wink-
+Latest Windows download:
+https://github.com/Bromlj/notes-wink-/releases/latest
 
-1. Extract the entire ZIP to a folder you can keep.
-2. Double-click Notes Workspace.exe in that folder. Keep the resources and
-   other files beside it; the EXE is part of a portable application folder.
-3. Use the included desktop-shortcut action if you want an icon on the desktop.
-4. Write ordinary notes immediately. Press Alt+W to open the Reference panel.
-5. For AI, open the Account page from Settings/Options and sign in with your
-   own ChatGPT account. The official sign-in opens in your normal browser.
-   Return to the notepad and use Options > Reconnect, then choose a model
-   and thinking level. A ChatGPT website session alone does not authenticate
-   Codex. No API key, separate Node installation or Edge extension is needed.
-6. If the Account page says Windows sandbox setup is needed, choose Set up
-   Windows sandbox and complete the official Windows administrator prompt.
-   Return and check that the sandbox is ready before asking it to run project
-   commands. The normal sandbox restrictions and approval prompts remain on.
+Do not share your installed app-data folder, Codex home, exported backups,
+attachments or test profiles. Those can contain your personal account data,
+notes and conversations. The original release contains the application and
+runtimes, not the creator's account or private files.
 
-The open-source Codex CLI runtime is included. Each person uses their own
-Codex allowance, available models and account configuration. Notes Workspace
-reuses that Windows user's standard Codex sign-in/configuration. Notes and
-chats are saved locally outside the app's portable program folder.
+INSTALL AND SIGN IN
+1. Download the Windows x64 ZIP, right-click it and choose Extract All.
+2. Open the extracted Notes Workspace folder and run Install.cmd.
+3. Open the blue Notes Workspace desktop shortcut. Ordinary notes work now.
+4. Press Alt+W. Choose Options > Account > Sign in with ChatGPT.
+5. Complete the official browser sign-in using YOUR OWN account, return to the
+   app, and choose Options > Reconnect. Select a model and thinking level.
+6. If Windows project tools requests setup, use Set up Windows sandbox and
+   complete the official administrator prompt. Normal restrictions remain on.
 
-Alt+Q hides and disables the visible AI panel; repeating it stays hidden.
-Alt+W restores it. Accepted requests continue while hidden. Tool approvals wait
-for you to reopen the panel. Each + note tab has its own chat. Choose an
-existing project folder in the Reference panel to read and edit that project.
-Extra access requests require your decision inside the panel.
+Open the included SETUP.html for illustrated instructions and troubleshooting,
+or read the same guide online:
+https://github.com/Bromlj/notes-wink-/blob/main/docs/SETUP.md
 
-Alt+S opens Notes for self: a plain text area with no visible AI controls.
-Enter sends and closes it; Shift+Enter adds a line. A green dot means ready.
-Alt+I inserts the completed reply once, with ordinary Undo. It never inserts
-automatically. A small unlabeled checkbox permits the next compact request to
-edit the real note file. It starts off for every new note. When checked, Alt+I
-applies the completed exact revision with Undo, without opening the sidebar.
-Disk changes may continue while the displayed note stays frozen. Manual or
-newer disk changes keep the revision pending for review.
-In either unlocked menu, Alt+1-6 selects Low, Medium,
-High, Extra high, Maximum or Ultra when supported. Alt+comma / Alt+period
-cycles the account's models; Alt+minus / Alt+plus (or equals) also work; Alt+Shift+M also selects the next model. Numeric
-feedback means model position / thinking level; 0 is another catalog default.
-Unsupported levels leave your selection unchanged. Alt+Q hides the box and
-indicator while accepted work continues. Both menus reflect shortcut selections.
-Compact mode grants note-edit access only when its separate checkbox was on
-before sending. It cannot add permission to an already running request.
-Open the full sidebar to review errors or unrelated approvals.
+No separate Node, Python, API key, Edge extension or development environment
+is needed. The official Codex runtime is bundled. Each person uses their own
+available Codex account access and allowance. Being signed in to ChatGPT in a
+browser alone does not authenticate the app's Codex runtime.
 
-File > Open links a real UTF-8 text file; Save updates it and Save As chooses a
-new location. Edit this note is an optional checkbox above the question box.
-Enable it before asking Codex to revise the current real document. Untitled
-notes receive a persistent file. The Reference panel shows the file path.
-Alt+Q freezes visible note changes while actual disk edits continue; Alt+W
-catches up. Another app viewing that file can see the disk changes. If you
-typed while hidden, Apply pending asks before replacing your visible text.
-Undo AI edit is available after the task finishes and restores both the file
-and local rich note if disk content has not changed again. Each new note
-defaults to editing off. Save and Undo keep newer disk changes intact and show
-conflicts; recovery retains your local note. Reopen files that moved or vanished.
-Apply pending can apply one confirmed revision while automatic editing is off.
+SHORTCUTS AND THE TWO COMPACT CHECKBOXES
+Alt+S opens Notes for self. Enter sends and closes it; Shift+Enter adds a line.
+The first small unlabeled checkbox permits the next request to read/edit the
+real current note. The second automatically applies its COMPLETED revision
+while compact mode is unlocked, if no newer local or disk changes conflict.
+Both start off in a new note. Turn the first on to make the second available.
+Permissions must be selected before sending and cannot be added to a running
+request. They are separate from the full sidebar's Edit this note setting.
 
-Export important notes using File > Save as. The privacy shortcut hides the
-panel visually; it does not conceal running software, files or activity from
-system inspection. Windows/file-picker dialogs can take keyboard priority.
-Closing the program, sleep, a crash or loss of connection can interrupt work.
+With the first off, Alt+I appends an ordinary completed reply once. With the
+first on and second off, Alt+I applies the exact completed note revision.
+Ordinary Undo works. Ordinary replies are never inserted automatically.
+The second checkbox does not stream edits or automatically accept approvals.
 
-The release package excludes the creator's notes, conversations, browser
-profiles, account credentials, loopback connection tokens and machine paths.
-Do not add your app-data folder or .codex folder when sharing it.
+A dot after Plain text in the status bar is grey while working, green Ready
+when manual insertion is available, and amber when attention is needed.
+Green Done briefly pulses for about four seconds after automatic application,
+including an automatic task that made no note change.
 
-Independent software. Not affiliated with Microsoft or OpenAI. Third-party
-runtime licenses and notices are included with the app. Test results describe
-the checks performed; they are not a guarantee that every Windows setup,
-account, integration or future service change will behave identically.
+Alt+Q hides ALL AI controls and indicators and freezes visible AI note updates.
+Accepted work on actual disk files and projects continues. A hidden automatic
+completion waits until Alt+S reopens and unlocks compact mode before it appears.
+Alt+W opens the full sidebar to review errors, conflicts or access approvals.
+A configured restore passphrase applies to both views.
 
-Official account/protocol documentation:
-https://learn.chatgpt.com/docs/app-server
-Official Codex source and license:
-https://github.com/openai/codex/tree/rust-v0.160.0
+In either unlocked view, Alt+1-6 selects Low, Medium, High, Extra high, Maximum
+or Ultra thinking when supported. Alt+minus / Alt+equals cycles previous / next
+model. Comma/period also works; Alt+Shift+M selects the next model. The numeric
+marker means model position / thinking level; 0 is another catalog default.
+The sidebar shows actual names. Both views stay synchronized, and choices apply
+to the next request. Shortcuts require app focus; Windows dialogs can take it.
+
+FILES, PROJECTS AND PRIVACY
+File > Open binds a real UTF-8 text file; Save updates it and Save As chooses
+another file. Untitled notes get persistent document files. Each + tab has a
+separate note and chat. Choose Browse in Reference to select a project folder.
+Codex can edit, create and move project files and run commands under its normal
+permissions. PROJECT FILES SAVE DIRECTLY; no Alt+I is needed for those changes.
+Attach supported documents or images in the sidebar, or drag them onto it.
+
+Newer local text and disk content are protected from conflicting replacement.
+Review pending revisions before applying them. Undo AI edit is available after
+completion if the note and file have not changed again. Another app viewing a
+real file can see disk changes while this app's display is hidden. Use Stop
+explicitly to stop work; closing the app can interrupt requests.
+
+Alt+Shift+S opens settings, backups, an optional restore passphrase and desktop
+shortcut creation. Recreate a stale desktop shortcut there. An old pinned
+taskbar shortcut may need unpinning and re-pinning. The window, taskbar and
+desktop shortcut use the blue notepad icon; the vendor EXE retains its original
+embedded icon and metadata.
+
+The interface offers visual discretion, not encryption or invisibility.
+Processes, recording, system inspection and account pages can reveal use.
+Share the original clean release, not your data folders or backups.
+
+Independent software, not affiliated with Microsoft or OpenAI. Third-party
+licenses are included. TEST_REPORT.md records 360 checks for 5.3.2 and their
+limits; results do not guarantee every account, Windows policy or future
+service version behaves identically.

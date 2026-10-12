@@ -93,7 +93,7 @@ async function nativeUpdate(e) {
   }
   a.pending.phase=e.phase||a.pending.phase;
   if(e.status!=='working') {
-    a.lastTurn={requestId:e.requestId,mode:a.pending.mode==='quiet'?'quiet':'panel',status:e.status,...(quietGrant?{noteEdit:true,noteEditTarget:{...quietGrant}}:{})};
+    a.lastTurn={requestId:e.requestId,mode:a.pending.mode==='quiet'?'quiet':'panel',status:e.status,...(quietGrant?{noteEdit:true,noteEditTarget:{...quietGrant},...(a.pending.quietAutoApply===true?{quietAutoApply:true}:{})}:{})};
     const target=a.pending.noteEditTarget||(base?{noteId:a.noteId,baseRevision:base.revision}:null),outcome=e.noteEditOutcome;
     if(target&&outcome&&outcome.requestId===e.requestId&&outcome.noteId===target.noteId&&outcome.baseRevision===target.baseRevision&&['changed','unchanged','error'].includes(outcome.status)&&typeof outcome.changed==='boolean'&&Number.isSafeInteger(outcome.sequence)&&outcome.sequence>=0){
       a.noteEditOutcome={requestId:e.requestId,noteId:outcome.noteId,baseRevision:outcome.baseRevision,status:outcome.status,changed:outcome.changed,sequence:outcome.sequence,...(typeof outcome.error==='string'&&outcome.error?{error:outcome.error.slice(0,4000)}:{})};
@@ -285,6 +285,7 @@ async function assistantForTab(tabId) {
   let value = await local(`assistant:${id}`, {id,agentVersion:4,noteId:s.noteId,messages:[],draft:'',pending:null,error:''});
   value.editNote=value.editNote===true;
   value.quietEditNote=value.quietEditNote===true;
+  value.quietAutoApply=value.quietAutoApply===true;
   // Old threads retained tool-disabling instructions in their Codex history.
   // Preserve them in History and start a clean agent thread for the upgrade.
   if(value.agentVersion!==4&&!value.pending){id=crypto.randomUUID();value={id,agentVersion:4,noteId:s.noteId,messages:[],draft:value.draft||'',pending:null,error:'Codex agent mode is ready. Choose a project folder in Options to work on your files.'};}
@@ -300,7 +301,7 @@ async function assistantForTab(tabId) {
 }
 async function saveAssistant(value) { value.updatedAt=Date.now();await chrome.storage.local.set({[`assistant:${value.id}`]:value}); }
 async function bindAssistant(tabId,value){await saveAssistant(value);await chrome.storage.local.set({[`noteAssistant:${value.noteId}`]:value.id,lastAssistantId:value.id});await patch(tabId,{assistantId:value.id});}
-function freshAssistant(noteId,project,draft=''){return {id:crypto.randomUUID(),agentVersion:4,noteId,project,messages:[],draft,pending:null,error:'',editNote:false,quietEditNote:false};}
+function freshAssistant(noteId,project,draft=''){return {id:crypto.randomUUID(),agentVersion:4,noteId,project,messages:[],draft,pending:null,error:'',editNote:false,quietEditNote:false,quietAutoApply:false};}
 function projectKey(value){return String(value||'').replace(/[\\/]+$/,'').toLowerCase();}
 async function projects(){
   let values=await local('projects',null);if(values)return values;
@@ -359,7 +360,7 @@ async function dispatch(m, sender, requestEpoch = privacyEpoch) {
       requireEditor(sender);const s=await state(tabId);if(s.noteId!==m.noteId)throw Error('The selected note changed.');const a=await assistantForTab(tabId);if(a.pending)throw Error('Finish or stop the active turn before reloading the document.');
       if(typeof m.text!=='string'||new TextEncoder().encode(m.text).length>C.MAX_TEXT_BYTES)throw Error('The document exceeds 2 MB.');
       const old=C.note(await local(`note:${s.noteId}`,null),s.noteId),n=C.note({...old,text:m.text.replace(/\r\n?/g,'\n'),html:'',name:m.name||old.name,revision:old.revision+1,updatedAt:Date.now()},old.id);
-      await chrome.storage.local.set({[`note:${n.id}`]:n});a.noteEditStage=null;a.noteFileError='';if(m.relinked){a.editNote=false;a.quietEditNote=false;}await saveAssistant(a);return {note:n,assistant:a};
+      await chrome.storage.local.set({[`note:${n.id}`]:n});a.noteEditStage=null;a.noteFileError='';if(m.relinked){a.editNote=false;a.quietEditNote=false;a.quietAutoApply=false;}await saveAssistant(a);return {note:n,assistant:a};
     }
     case 'AI_DRAFT': {
       requireEditor(sender);
@@ -380,6 +381,12 @@ async function dispatch(m, sender, requestEpoch = privacyEpoch) {
       const a=await contextAssistant(tabId,m);if(a.pending)throw Error('Finish or stop the active turn before changing this setting.');
       a.quietEditNote=m.enabled;await saveAssistant(a);return {assistant:a};
     }
+    case 'AI_QUIET_NOTE_AUTO_SET': {
+      const active=await activeEditor(sender,requestEpoch);if(active.aiMode!=='quiet')throw Error('Open Notes for self to change this setting.');
+      if(typeof m.enabled!=='boolean')throw Error('Choose whether completed note revisions are added automatically.');
+      const a=await contextAssistant(tabId,m);if(a.pending)throw Error('Finish or stop the active turn before changing this setting.');
+      a.quietAutoApply=m.enabled;await saveAssistant(a);return {assistant:a};
+    }
     case 'AI_NOTE_SYNC': case 'AI_NOTE_APPLY': {
       await activeEditor(sender,requestEpoch);const a=await contextAssistant(tabId,m);
       const result=await applyNoteStage(a,m.type==='AI_NOTE_APPLY'&&m.force===true,{bindingId:m.bindingId,expectedHash:m.expectedHash});
@@ -389,6 +396,8 @@ async function dispatch(m, sender, requestEpoch = privacyEpoch) {
       const active=await activeEditor(sender,requestEpoch);if(active.aiMode!=='quiet')throw Error('Open Notes for self to insert this revision.');
       const a=await contextAssistant(tabId,m),turn=a.lastTurn,stage=a.noteEditStage,grant=turn?.noteEditTarget;
       if(a.pending)throw Error('Wait for this revision to finish.');
+      if(m.automatic!==undefined&&typeof m.automatic!=='boolean')throw Error('Invalid note revision request.');
+      if(m.automatic===true&&(turn?.quietAutoApply!==true||a.quietAutoApply!==true))throw Error('Automatic insertion was not enabled for this task. Use the insert shortcut to review it.');
       if(!turn||turn.mode!=='quiet'||turn.status!=='completed'||turn.noteEdit!==true||turn.requestId!==m.requestId||!stage||stage.requestId!==turn.requestId||stage.quiet!==true||!stage.quietGrant||!grant?.bindingId||grant.noteId!==a.noteId||stage.quietGrant.noteId!==grant.noteId||stage.quietGrant.baseRevision!==grant.baseRevision||stage.quietGrant.bindingId!==grant.bindingId||stage.quietGrant.fileHash!==grant.fileHash)throw Error('There is no completed note revision for this tab.');
       if(stage.requiresApply){conflictStage(stage,'explicit_apply');await saveAssistant(a);return {assistant:a,applied:false,conflict:true,reason:'explicit_apply'};}
       if(!stage.file||stage.file.noteId!==a.noteId||stage.file.bindingId!==grant.bindingId||m.bindingId!==grant.bindingId||typeof m.expectedHash!=='string'||![grant.fileHash,stage.file.hash].includes(m.expectedHash)){conflictStage(stage,'disk_changed');await saveAssistant(a);return {assistant:a,applied:false,conflict:true,reason:'disk_changed'};}
@@ -415,7 +424,7 @@ async function dispatch(m, sender, requestEpoch = privacyEpoch) {
       }
       const files=Array.isArray(m.files)?m.files.slice(0,20):[];
       a.pending={id:m.id,text:'',phase:'Starting',startedAt:Date.now(),model:settings.model,effort:settings.effort,mode};a.noteEditOutcome=null;
-      if(noteEdit){const n=await local(`note:${a.noteId}`,null);a.pending.noteEditBase={revision:noteEdit.revision,text:noteEdit.text,html:n?.html||''};a.pending.noteEditTarget={noteId:a.noteId,baseRevision:noteEdit.revision,...(mode==='quiet'?{bindingId:noteEdit.bindingId,fileHash:noteEdit.fileHash}:{})};}
+      if(noteEdit){const n=await local(`note:${a.noteId}`,null);a.pending.noteEditBase={revision:noteEdit.revision,text:noteEdit.text,html:n?.html||''};a.pending.noteEditTarget={noteId:a.noteId,baseRevision:noteEdit.revision,...(mode==='quiet'?{bindingId:noteEdit.bindingId,fileHash:noteEdit.fileHash}:{})};if(mode==='quiet'&&a.quietAutoApply===true)a.pending.quietAutoApply=true;}
       a.error='';a.messages.push({role:'user',text:m.text});a.draft='';await saveAssistant(a);
       running.set(m.id,{tabId,assistantId:a.id});
       // Submission runs outside the storage queue. Notes continue saving while
