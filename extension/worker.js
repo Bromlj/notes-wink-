@@ -80,7 +80,7 @@ async function selection() {
 async function nativeUpdate(e) {
   const job=running.get(e.requestId);if(!job)return;
   const a=await local(`assistant:${job.assistantId}`,null);if(!a?.pending||a.pending.id!==e.requestId)return;
-  if(e.threadId)a.threadId=e.threadId;if(typeof e.text==='string')a.pending.text=e.text;
+  if(e.threadId)a.threadId=e.threadId;if(typeof e.text==='string')a.pending.text=e.text;if(typeof e.finalText==='string')a.pending.finalText=e.finalText;
   if(typeof e.noteFileError==='string')a.noteFileError=e.noteFileError;
   for(const key of ['activity','diff','plan','requests'])if(e[key]!==undefined)a.pending[key]=e[key];
   const edited=e.noteEdit,base=a.pending.noteEditBase,quietGrant=a.pending.mode==='quiet'&&a.pending.noteEditTarget?.bindingId?a.pending.noteEditTarget:null;
@@ -98,7 +98,7 @@ async function nativeUpdate(e) {
     if(target&&outcome&&outcome.requestId===e.requestId&&outcome.noteId===target.noteId&&outcome.baseRevision===target.baseRevision&&['changed','unchanged','error'].includes(outcome.status)&&typeof outcome.changed==='boolean'&&Number.isSafeInteger(outcome.sequence)&&outcome.sequence>=0){
       a.noteEditOutcome={requestId:e.requestId,noteId:outcome.noteId,baseRevision:outcome.baseRevision,status:outcome.status,changed:outcome.changed,sequence:outcome.sequence,...(typeof outcome.error==='string'&&outcome.error?{error:outcome.error.slice(0,4000)}:{})};
     }else if(target&&!outcome&&e.status!=='completed')a.noteEditOutcome={requestId:e.requestId,noteId:target.noteId,baseRevision:target.baseRevision,status:'error',changed:!!a.noteEditStage&&a.noteEditStage.requestId===e.requestId,sequence:a.noteEditStage?.requestId===e.requestId?a.noteEditStage.sequence:0,error:e.error||'Codex could not complete this note-editing request.'};
-    if(a.pending.text)a.messages.push({role:'assistant',text:a.pending.text,requestId:e.requestId,mode:a.lastTurn.mode});for(const key of ['activity','diff','plan'])a[key]=a.pending[key]|| (key==='diff'?'':[]);a.pending=null;a.error=e.error||'';running.delete(e.requestId);
+    if(a.pending.text)a.messages.push({role:'assistant',text:a.pending.text,...(typeof a.pending.finalText==='string'?{finalText:a.pending.finalText}:{}),requestId:e.requestId,mode:a.lastTurn.mode});for(const key of ['activity','diff','plan'])a[key]=a.pending[key]|| (key==='diff'?'':[]);a.pending=null;a.error=e.error||'';running.delete(e.requestId);
   }
   await saveAssistant(a);
   // A running conversation belongs to its note, not to whichever note is now
@@ -283,8 +283,9 @@ async function assistantForTab(tabId) {
   }
   if (!id) id = crypto.randomUUID();
   let value = await local(`assistant:${id}`, {id,agentVersion:4,noteId:s.noteId,messages:[],draft:'',pending:null,error:''});
-  value.editNote=value.editNote===true;
-  value.quietEditNote=value.quietEditNote===true;
+  // Both controls grant the same current note. Keep the legacy fields in sync
+  // so upgrades retain an existing opt-in without two contradictory switches.
+  value.editNote=value.quietEditNote=value.editNote===true||value.quietEditNote===true;
   value.quietAutoApply=value.quietAutoApply===true;
   // Old threads retained tool-disabling instructions in their Codex history.
   // Preserve them in History and start a clean agent thread for the upgrade.
@@ -369,7 +370,7 @@ async function dispatch(m, sender, requestEpoch = privacyEpoch) {
     }
     case 'AI_NOTE_EDIT_SET': {
       await activeEditor(sender,requestEpoch);if(typeof m.enabled!=='boolean')throw new Error('Choose whether Codex may edit this note.');
-      const a=await contextAssistant(tabId,m);a.editNote=m.enabled;
+      const a=await contextAssistant(tabId,m);a.editNote=a.quietEditNote=m.enabled;
       // Turning editing off stops further app updates for this run. An already
       // accepted Codex file grant lasts until the turn finishes or is stopped.
       if(!m.enabled&&a.pending?.mode!=='quiet'&&a.pending){delete a.pending.noteEditBase;delete a.pending.noteEditAppliedBase;}
@@ -379,7 +380,7 @@ async function dispatch(m, sender, requestEpoch = privacyEpoch) {
       const active=await activeEditor(sender,requestEpoch);if(active.aiMode!=='quiet')throw Error('Open Notes for self to change this setting.');
       if(typeof m.enabled!=='boolean')throw Error('Choose whether this note may be edited.');
       const a=await contextAssistant(tabId,m);if(a.pending)throw Error('Finish or stop the active turn before changing this setting.');
-      a.quietEditNote=m.enabled;await saveAssistant(a);return {assistant:a};
+      a.editNote=a.quietEditNote=m.enabled;await saveAssistant(a);return {assistant:a};
     }
     case 'AI_QUIET_NOTE_AUTO_SET': {
       const active=await activeEditor(sender,requestEpoch);if(active.aiMode!=='quiet')throw Error('Open Notes for self to change this setting.');
@@ -397,7 +398,7 @@ async function dispatch(m, sender, requestEpoch = privacyEpoch) {
       const a=await contextAssistant(tabId,m),turn=a.lastTurn,stage=a.noteEditStage,grant=turn?.noteEditTarget;
       if(a.pending)throw Error('Wait for this revision to finish.');
       if(m.automatic!==undefined&&typeof m.automatic!=='boolean')throw Error('Invalid note revision request.');
-      if(m.automatic===true&&(turn?.quietAutoApply!==true||a.quietAutoApply!==true))throw Error('Automatic insertion was not enabled for this task. Use the insert shortcut to review it.');
+      if(m.automatic===true&&(turn?.quietAutoApply!==true||a.quietAutoApply!==true||a.quietEditNote!==true))throw Error('Automatic insertion was not enabled for this task or note editing is now off. Use the insert shortcut to review it.');
       if(!turn||turn.mode!=='quiet'||turn.status!=='completed'||turn.noteEdit!==true||turn.requestId!==m.requestId||!stage||stage.requestId!==turn.requestId||stage.quiet!==true||!stage.quietGrant||!grant?.bindingId||grant.noteId!==a.noteId||stage.quietGrant.noteId!==grant.noteId||stage.quietGrant.baseRevision!==grant.baseRevision||stage.quietGrant.bindingId!==grant.bindingId||stage.quietGrant.fileHash!==grant.fileHash)throw Error('There is no completed note revision for this tab.');
       if(stage.requiresApply){conflictStage(stage,'explicit_apply');await saveAssistant(a);return {assistant:a,applied:false,conflict:true,reason:'explicit_apply'};}
       if(!stage.file||stage.file.noteId!==a.noteId||stage.file.bindingId!==grant.bindingId||m.bindingId!==grant.bindingId||typeof m.expectedHash!=='string'||![grant.fileHash,stage.file.hash].includes(m.expectedHash)){conflictStage(stage,'disk_changed');await saveAssistant(a);return {assistant:a,applied:false,conflict:true,reason:'disk_changed'};}

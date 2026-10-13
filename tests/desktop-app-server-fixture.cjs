@@ -20,6 +20,21 @@ function startTurn(p,id){
  const number=++turnNumber,turnId='fixture-turn-'+number,itemId='fixture-message-'+number;
  const input=(p.input||[]).filter(x=>x.type==='text').map(x=>x.text).join('\n');
  const t={id:turnId,itemId,input};turns.set(p.threadId,t);respond(id,{turn:{id:turnId,status:'inProgress',items:[]}});
+ const destination=/NOTE_DESTINATION_FIXTURE_(REPLY|EDIT|CLOUD|COMMENTARY)/.exec(input)?.[1];
+ if(destination){
+  const commentary={id:'destination-commentary-'+number,type:'agentMessage',phase:'commentary',text:'I am preparing the lecture note. A synthetic Pages preview belongs only to this commentary.\n::page-preview{page_id="page_fixture_only"}'};
+  const finalText=destination==='EDIT'?'The local note file was updated and verified.\n::page-preview{page_id="page_fixture_only"}':destination==='CLOUD'?'Explicit cloud destination retained. https://example.invalid/page-fixture-only':'LECTURE_NOTE_CONTENT_487\nTopic: project planning\nA project has a clear goal, an owner and an agreed deadline.';
+  const final={id:'destination-final-'+number,type:'agentMessage',phase:'final_answer',text:finalText};
+  const items=destination==='COMMENTARY'?[commentary]:[commentary,final];
+  t.noteTimers=[setTimeout(()=>{if(!turns.has(p.threadId))return;notify('item/started',{threadId:p.threadId,turnId,item:{...commentary,text:''}});notify('item/agentMessage/delta',{threadId:p.threadId,turnId,itemId:commentary.id,delta:commentary.text});notify('item/completed',{threadId:p.threadId,turnId,item:commentary});},150)];
+  if(destination==='EDIT'){
+   const file=editableNote(input);if(!file)throw Error('Destination edit fixture has no authoritative local note grant.');
+   const baseline=fs.readFileSync(file,'utf8');
+   t.noteTimers.push(setTimeout(()=>fs.writeFileSync(file,baseline+'LECTURE_NOTE_PARTIAL_639'),500),setTimeout(()=>fs.writeFileSync(file,baseline+'LECTURE_NOTE_EDIT_938\nGoal, owner and deadline belong in this local lecture note.\n'),1300));
+  }
+  if(destination!=='COMMENTARY')t.noteTimers.push(setTimeout(()=>{if(!turns.has(p.threadId))return;notify('item/started',{threadId:p.threadId,turnId,item:{...final,text:''}});notify('item/agentMessage/delta',{threadId:p.threadId,turnId,itemId:final.id,delta:final.text});notify('item/completed',{threadId:p.threadId,turnId,item:final});},1600));
+  t.timer=setTimeout(()=>{if(!turns.has(p.threadId))return;for(const timer of t.noteTimers)clearTimeout(timer);turns.delete(p.threadId);notify('turn/completed',{threadId:p.threadId,turn:{id:turnId,status:'completed',items}});},2000);return;
+ }
  const quietNote=/QUIET_NOTE_FIXTURE_(OFF|EMPTY|MANUAL|DISK|OWNER|APPROVAL|NOCHANGE)/.exec(input)?.[1];
  if(quietNote){
   if(quietNote==='OFF'){t.timer=setTimeout(()=>finish(p.threadId,'Ordinary quiet-note fixture reply 487.'),900);return;}

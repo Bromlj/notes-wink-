@@ -29,7 +29,9 @@ AI usage comes from your account's available **Codex allowance**. A ChatGPT brow
 
 ![Notes for self with made-up note text and both compact checkboxes selected](docs/images/notes-for-self.png)
 
-The two small checkboxes have no visible labels. **The first permits the next request to read and edit the current real note. The second permits automatic application of its completed revision.** Both start off for a new note; they are independent of the sidebar's Edit this note setting.
+The two small checkboxes have no visible labels. **The first permits the next request to read and edit the current real note. It is the same setting as Edit this note in the sidebar. The second permits automatic application of a completed compact note revision.** Both start off for a new note. Changing either editing control updates both views.
+
+With editing off, an ordinary request to write a note returns ready-to-insert note content; **Alt+I** inserts only the final answer. Progress updates stay in Reference. A request to add or save a note means the current local notepad; cloud Pages or another destination require an explicit request.
 
 | Shortcut | Action |
 | --- | --- |
@@ -55,7 +57,7 @@ See the [setup guide](docs/SETUP.md) for checkbox examples, screenshots, model n
 - **File → Open** binds a real UTF-8 text file. Save updates it; Save as chooses another file. Untitled notes receive persistent document files in the app's local data folder.
 - **+** creates another note and independent Codex chat. Choose **Browse** in the Reference sidebar to select a project folder.
 - Codex can edit, create and move the project's actual files, run commands and use attachments under its normal sandbox and approval controls. Project changes save directly; **Alt+I is not needed for project files**.
-- The sidebar's **Edit this note** enables real note-file revisions with visible progress. Compact editing has its own checkbox and waits for completion before manual or opted-in automatic application.
+- The sidebar's **Edit this note** and compact left checkbox share one permission for this note. Sidebar revisions show visible progress; compact revisions wait for completion before manual or opted-in automatic application. Turning editing off also stops automatic compact application; accepted disk work can continue.
 - **Alt+Q freezes the displayed note and indicator, while accepted disk/project work continues.** Another program viewing the file can see those disk changes. Stop the task explicitly to stop its work.
 - **Undo AI edit** restores an accepted note revision after completion if neither the note nor disk file changed again. Ordinary Undo also works for compact insertion. Conflicting local text stays in recovery rather than being silently overwritten.
 - **Apply pending** in the sidebar can apply one confirmed revision even when persistent note editing is off. **Reload from disk** and **Relink moved file** are deliberate recovery actions for external changes or moved documents.
@@ -84,12 +86,12 @@ The ZIP and checksum are written to `release/`. The build copies explicit app fi
 
 ## Tests
 
-The 5.3.3 update passed **442 checks: 201 helper tests, 69 renderer checks and 172 packaged-app checks**. These cover compact note permissions, manual and automatic application, hidden completion, conflicts, rich Undo, model shortcuts, account isolation and Windows icon handling. The [test report](desktop/TEST_REPORT.md) records the measured scope and limits.
+The 5.3.4 update passed **554 checks: 233 helper tests, 139 renderer checks and 182 packaged-app checks**. These cover compact note permissions, manual and automatic application, hidden completion, conflicts, rich Undo, model shortcuts, account isolation and Windows icon handling. The [test report](desktop/TEST_REPORT.md) records the measured scope and limits.
 
 After installing source dependencies, run helper tests without signing in:
 
 ```powershell
-node --test tests/core.test.cjs tests/direct.test.cjs tests/agent.test.cjs tests/desktop-service.test.cjs tests/desktop-backup.test.cjs tests/desktop-storage.test.cjs tests/desktop-note-files.test.cjs tests/desktop-direct-host.test.cjs tests/desktop-note-file-races.test.cjs tests/note-host.test.cjs tests/worker-note-edit.test.cjs tests/desktop-icon.test.cjs tests/desktop-shortcuts.test.cjs
+node --test tests/core.test.cjs tests/direct.test.cjs tests/agent.test.cjs tests/desktop-service.test.cjs tests/desktop-backup.test.cjs tests/desktop-storage.test.cjs tests/desktop-note-files.test.cjs tests/desktop-direct-host.test.cjs tests/desktop-note-file-races.test.cjs tests/note-host.test.cjs tests/worker-note-edit.test.cjs tests/desktop-icon.test.cjs tests/desktop-shortcuts.test.cjs tests/note-output.test.cjs
 ```
 
 For packaged application tests, build the app and install the test driver first:
@@ -107,6 +109,10 @@ node tests/desktop-quiet-note-e2e.cjs
 node tests/desktop-quiet-auto-e2e.cjs
 node tests/desktop-icon-e2e.cjs
 node tests/desktop-consistency-e2e.cjs
+node tests/desktop-note-destination-e2e.cjs
+node tests/note-edit-renderer.test.cjs
+node tests/quiet-reference-renderer.cjs
+node tests/rich-note-apply.test.cjs
 ```
 
 These scripts use disposable profiles and text files. `desktop-first-run.cjs` uses the real bundled Codex runtime with an empty sign-in profile; deterministic editor tests use the included app-server fixture. Generated test profiles, logs and screenshots are ignored by Git. The two documentation pictures above and in the setup guide are explicit synthetic examples.

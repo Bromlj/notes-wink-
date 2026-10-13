@@ -1,4 +1,4 @@
-NOTES WORKSPACE 5.3.3 — SHARE WITH FRIENDS
+NOTES WORKSPACE 5.3.4 — SHARE WITH FRIENDS
 
 Share this repository or the ORIGINAL release ZIP:
 https://github.com/Bromlj/notes-wink-
@@ -36,9 +36,13 @@ real current note. The second automatically applies its COMPLETED revision
 while compact mode is unlocked, if no newer local or disk changes conflict.
 Both start off in a new note. Turn the first on to make the second available.
 Permissions must be selected before sending and cannot be added to a running
-request. They are separate from the full sidebar's Edit this note setting.
+request. The first checkbox and the sidebar's Edit this note are the same
+permission and always agree. Turning editing off also stops automatic compact
+application; accepted work on disk can continue.
 
-With the first off, Alt+I appends an ordinary completed reply once. With the
+With the first off, Alt+I appends only the final answer once; progress stays in
+Reference. Add/save a note means this local notepad unless another destination
+is explicitly requested. With the
 first on and second off, Alt+I applies the exact completed note revision.
 Ordinary Undo works. Ordinary replies are never inserted automatically.
 The second checkbox does not stream edits or automatically accept approvals.
@@ -88,6 +92,6 @@ Processes, recording, system inspection and account pages can reveal use.
 Share the original clean release, not your data folders or backups.
 
 Independent software, not affiliated with Microsoft or OpenAI. Third-party
-licenses are included. TEST_REPORT.md records 442 checks for 5.3.3 and their
+licenses are included. TEST_REPORT.md records 554 checks for 5.3.4 and their
 limits; results do not guarantee every account, Windows policy or future
 service version behaves identically.

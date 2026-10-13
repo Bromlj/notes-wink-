@@ -207,20 +207,23 @@
     let editSteps=0;applyingAI=true;
     try{
       editor.focus({preventScroll:true});
-      if(m.confirmed===true){
-        // Neutralize inherited heading/list blocks before replacing a whole
-        // document. Otherwise Chromium can leave an extra empty heading after
-        // multiline insertHTML, changing the projected text.
-        editor.select();if(document.execCommand('formatBlock',false,'div'))editSteps++;
-        editor.select();if(document.execCommand('insertHTML',false,expectedHTML('',m.text)))editSteps++;
-      }else{
-        editSteps=editor.setRangeText(m.text.slice(prefix,m.text.length-suffix),prefix,before.text.length-suffix)?1:0;
-        if(editor.value!==m.text){
-          // Retry only the changed range with escaped plain text. Native
-          // insertText can normalize a raw trailing LF or a table-cell newline.
-          if(editSteps)document.execCommand('undo');editSteps=0;
-          if(editor.value===before.text&&RichEditor.html()===before.html){editSteps=RichEditor.insertExact(m.text.slice(prefix,m.text.length-suffix),prefix,before.text.length-suffix)?1:0;}
-        }
+      // Confirmation authorizes a revision; it need not flatten its unchanged
+      // rich content. A single native range edit also restores every original
+      // heading/list/link with one Undo, unlike formatBlock + insertHTML.
+      editSteps=editor.setRangeText(m.text.slice(prefix,m.text.length-suffix),prefix,before.text.length-suffix)?1:0;
+      if(editor.value!==m.text){
+        // Retry only the changed range with escaped plain text. Native
+        // insertText can normalize a raw trailing LF or a table-cell newline.
+        if(editSteps)document.execCommand('undo');editSteps=0;
+        if(editor.value===before.text&&RichEditor.html()===before.html){editSteps=RichEditor.insertExact(m.text.slice(prefix,m.text.length-suffix),prefix,before.text.length-suffix)?1:0;}
+      }
+      if(editor.value!==m.text&&!before.text.slice(0,prefix).trim()&&!before.text.slice(before.text.length-suffix).trim()){
+        // The change replaces all meaningful content, but a common trailing
+        // LF can keep a table range anchored inside its last cell. Expand to
+        // the document boundary only after restoring the exact baseline;
+        // localized edits retain their unchanged rich blocks and links.
+        if(editSteps)document.execCommand('undo');editSteps=0;
+        if(editor.value===before.text&&RichEditor.html()===before.html)editSteps=RichEditor.replaceAll(m.text)?1:0;
       }
       if(editor.value!==m.text){
         for(let i=0;i<editSteps&&(editor.value!==before.text||RichEditor.html()!==before.html);i++)if(!document.execCommand('undo'))break;

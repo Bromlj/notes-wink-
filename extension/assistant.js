@@ -26,11 +26,14 @@
     const key=state.noteId+':'+turn.requestId;if(consumedQuiet.has(key))return null;
     if(turn.noteEdit===true){const stage=state.noteEditStage;if(!stage||stage.quiet!==true||stage.requestId!==turn.requestId||stage.appliedRevision!=null)return null;return {noteEdit:true,key,noteId:state.noteId,requestId:turn.requestId,stage};}
     const message=[...(state.messages||[])].reverse().find(m=>m.role==='assistant'&&m.requestId===turn.requestId&&typeof m.text==='string'&&m.text.trim());
-    return message?{text:message.text,key,noteId:state.noteId,requestId:turn.requestId}:null;
+    // Pre-upgrade transcripts lost message phases, so their combined text
+    // cannot safely be reconstructed as a final answer for insertion.
+    const text=message?.finalText;
+    return typeof text==='string'&&text.trim()?{text,key,noteId:state.noteId,requestId:turn.requestId}:null;
   }
   function renderQuiet(){
     const active=enabled&&aiMode==='quiet'&&!switching;
-    const selectionBusy=!enabled||switching||restoring||submitting||connecting||choosingQuiet||!!noteEditPreference||!settings;
+    const selectionBusy=!enabled||switching||restoring||submitting||connecting||choosingQuiet||!!noteEditPreference||!!quietEditPreference||!settings;
     $('assistant-model').disabled=$('assistant-thinking').disabled=selectionBusy;
     $('assistant-send').disabled=selectionBusy;
     $('quiet-prompt').hidden=!active||!quietPromptOpen;$('quiet-controls').hidden=true;
@@ -39,21 +42,21 @@
     const answer=quietAnswer(),noteError=!state?.pending&&state?.lastTurn?.mode==='quiet'&&state.lastTurn.noteEdit===true&&(answer?.stage.conflict&&answer.stage.conflictReason!=='quiet'||state.noteFileError||state.noteEditOutcome?.requestId===state.lastTurn.requestId&&state.noteEditOutcome.status==='error');
     const blocked=!!state?.pending?.requests?.length,failed=!!(submitError||quietError||quietChoiceNotice||state?.error||noteError||!state?.pending&&state?.lastTurn?.mode==='quiet'&&['failed','interrupted'].includes(state.lastTurn.status)),ready=!!answer;
     const turn=state?.lastTurn,outcome=state?.noteEditOutcome,completionKey=state?.noteId+':'+turn?.requestId;
-    if(active&&!failed&&!blocked&&!state?.pending&&!submitting&&!insertingQuiet&&!quietEditPreference&&!quietAutoPreference&&state?.quietAutoApply===true&&turn?.mode==='quiet'&&turn.status==='completed'&&turn.noteEdit===true&&turn.quietAutoApply===true&&outcome?.requestId===turn.requestId&&outcome.noteId===state.noteId&&outcome.status==='unchanged'&&!state.noteEditStage&&!consumedQuiet.has(completionKey)){rememberQuiet(consumedQuiet,completionKey,'notesQuietConsumed');completeQuiet(state.noteId,turn.requestId);}
+    if(active&&!failed&&!blocked&&!state?.pending&&!submitting&&!insertingQuiet&&!quietEditPreference&&!quietAutoPreference&&state?.quietEditNote===true&&state.quietAutoApply===true&&turn?.mode==='quiet'&&turn.status==='completed'&&turn.noteEdit===true&&turn.quietAutoApply===true&&outcome?.requestId===turn.requestId&&outcome.noteId===state.noteId&&outcome.status==='unchanged'&&!state.noteEditStage&&!consumedQuiet.has(completionKey)){rememberQuiet(consumedQuiet,completionKey,'notesQuietConsumed');completeQuiet(state.noteId,turn.requestId);}
     const completed=!!quietCompletion&&quietCompletion.noteId===state?.noteId&&quietCompletion.requestId===turn?.requestId&&quietCompletion.until>Date.now()&&!state?.pending;
     const kind=blocked?'blocked':failed?'error':state?.pending?'working':ready||completed?'ready':null;
     const indicator=$('quiet-indicator');indicator.hidden=!active||!kind;indicator.dataset.state=kind||'';indicator.dataset.completed=String(completed&&!failed&&!blocked);
     const hint=blocked||failed?'Needs attention':state?.pending?'Working':completed?'Done':ready?'Ready':'';
     $('quiet-status').textContent=hint;$('quiet-status').dataset.error=String(blocked||failed);
     indicator.title=hint;indicator.setAttribute('aria-label',hint||'Notes status');
-    $('quiet-edit-note').checked=quietEditPreference?.on??state?.quietEditNote===true;
+    $('quiet-edit-note').checked=quietEditPreference?.on??noteEditPreference?.on??state?.quietEditNote===true;
     $('quiet-auto-note').checked=quietAutoPreference?.on??state?.quietAutoApply===true;
-    const preferencesBusy=!!quietEditPreference||!!quietAutoPreference;
+    const preferencesBusy=!!noteEditPreference||!!quietEditPreference||!!quietAutoPreference;
     $('quiet-edit-note').disabled=!active||switching||submitting||!!state?.pending||preferencesBusy||insertingQuiet;
     $('quiet-auto-note').disabled=$('quiet-edit-note').disabled||state?.quietEditNote!==true;
     quietQuestion.disabled=!active||switching||submitting||!!state?.pending;$('quiet-send').disabled=!active||selectionBusy||preferencesBusy||!!state?.pending;
     $('quiet-model').disabled=$('quiet-thinking').disabled=!active||selectionBusy;
-    if(active&&answer?.noteEdit&&state?.quietAutoApply===true&&state.lastTurn?.quietAutoApply===true&&!failed&&!blocked&&!submitting&&!insertingQuiet&&!preferencesBusy&&!attemptedAutoQuiet.has(answer.key)&&queuedAutoQuiet!==answer.key){queuedAutoQuiet=answer.key;queueMicrotask(()=>{if(queuedAutoQuiet!==answer.key)return;queuedAutoQuiet=null;void insertQuiet(true);});}
+    if(active&&answer?.noteEdit&&state?.quietEditNote===true&&state.quietAutoApply===true&&state.lastTurn?.quietAutoApply===true&&!failed&&!blocked&&!submitting&&!insertingQuiet&&!preferencesBusy&&!attemptedAutoQuiet.has(answer.key)&&queuedAutoQuiet!==answer.key){queuedAutoQuiet=answer.key;queueMicrotask(()=>{if(queuedAutoQuiet!==answer.key)return;queuedAutoQuiet=null;void insertQuiet(true);});}
   }
   function closeQuietPrompt(){quietPromptOpen=false;renderQuiet();$('editor').focus({preventScroll:true});}
   async function toggleQuiet(){
@@ -85,9 +88,9 @@
     const effort=model.supportedReasoningEfforts.some(e=>e.reasoningEffort===settings.effort)?settings.effort:model.defaultReasoningEffort;void chooseQuiet(model,effort);
   }
   async function insertQuiet(automatic=false){
-    if(!enabled||switching||insertingQuiet||submitting||quietEditPreference||quietAutoPreference)return;const answer=quietAnswer();if(!answer||answer.noteEdit&&aiMode!=='quiet'||automatic&&(!answer.noteEdit||state?.quietAutoApply!==true||state?.lastTurn?.quietAutoApply!==true||attemptedAutoQuiet.has(answer.key)))return;const current=context(),token=restoreToken;insertingQuiet=true;renderQuiet();let guard=null;
+    if(!enabled||switching||insertingQuiet||submitting||noteEditPreference||quietEditPreference||quietAutoPreference)return;const answer=quietAnswer();if(!answer||answer.noteEdit&&aiMode!=='quiet'||automatic&&(!answer.noteEdit||state?.quietEditNote!==true||state?.quietAutoApply!==true||state?.lastTurn?.quietAutoApply!==true||attemptedAutoQuiet.has(answer.key)))return;const current=context(),token=restoreToken;insertingQuiet=true;renderQuiet();let guard=null;
     try{let result;if(answer.noteEdit){
-      await globalThis.NotepadEditor?.flush();if(!enabled||aiMode!=='quiet'||token!==restoreToken||!sameContext(current)||state?.pending||quietAnswer()?.key!==answer.key||automatic&&(state?.quietAutoApply!==true||state?.lastTurn?.quietAutoApply!==true))return;
+      await globalThis.NotepadEditor?.flush();if(!enabled||aiMode!=='quiet'||token!==restoreToken||!sameContext(current)||state?.pending||quietAnswer()?.key!==answer.key||automatic&&(state?.quietEditNote!==true||state?.quietAutoApply!==true||state?.lastTurn?.quietAutoApply!==true))return;
       guard={current,token,requestId:answer.requestId};quietApplyGuard=guard;
       if(automatic)rememberQuiet(attemptedAutoQuiet,answer.key,'notesQuietAutoAttempted');
       result=await request('AI_QUIET_NOTE_APPLY',{assistantId:current.assistantId,requestId:answer.requestId,...(automatic?{automatic:true}:{}),...globalThis.NotepadEditor?.fileGuard?.()});
@@ -128,15 +131,15 @@
   function renderNoteEditing(){
     const stage=state?.noteEditStage,pending=!!stage&&stage.appliedRevision==null;
     const desktop=!!globalThis.NoteDesktop,file=globalThis.NotepadEditor?.file?.(),undo=!!globalThis.NotepadEditor?.canUndoAI?.();
-    $('assistant-edit-note').checked=noteEditPreference?.on??state?.editNote===true;
-    $('assistant-edit-note').disabled=!enabled||switching||submitting||!!noteEditPreference;
+    $('assistant-edit-note').checked=noteEditPreference?.on??quietEditPreference?.on??state?.editNote===true;
+    $('assistant-edit-note').disabled=!enabled||switching||submitting||!!noteEditPreference||!!quietEditPreference;
     $('assistant-note-file').hidden=!desktop||!file;$('assistant-note-file').textContent=file?.path||file?.name||'';
     $('assistant-note-folder-scope').hidden=!desktop;
     const conflicts={local_changes:'Your note changed during this task. Review before replacing your draft.',disk_changed:'The file changed again on disk. Review its latest revision before replacing your draft.',formatting_conflict:'This revision could not be inserted with the current formatting. Review before applying it.',explicit_apply:'This saved revision needs a one-time Apply before it can replace your draft.',unavailable:'The editor did not respond. Your revision is kept; reopen the panel and try again.',save_failed:'The revision could not be saved. Your draft and pending revision are kept.'};
     const quietTask=state?.pending?.mode==='quiet'&&!!state.pending.noteEditTarget;
-    const quietAutomatic=state?.quietAutoApply===true&&(quietTask?state.pending.quietAutoApply===true:!!stage&&state?.lastTurn?.requestId===stage.requestId&&state.lastTurn.quietAutoApply===true);
+    const quietAutomatic=state?.quietEditNote===true&&state.quietAutoApply===true&&(quietTask?state.pending.quietAutoApply===true:!!stage&&state?.lastTurn?.requestId===stage.requestId&&state.lastTurn.quietAutoApply===true);
     let noteStatus;
-    if(noteEditPreference)noteStatus='Saving note editing preference…';
+    if(noteEditPreference||quietEditPreference)noteStatus='Saving note editing preference…';
     else if(pending&&stage.conflict)noteStatus=conflicts[stage.conflictReason]||'This revision needs review before replacing your draft.';
     else if(quietTask)noteStatus='Notes for self task · Editing the real note file in the background. Visible changes wait for completion.';
     else if(pending&&stage.quiet)noteStatus=quietAutomatic?'Notes for self revision · Restore with Alt+S to apply automatically.':'Notes for self revision · Restore with Alt+S, then press Alt+I to apply once.';
@@ -291,7 +294,7 @@
     await chooseQuiet(model,effort);
   }
   async function submit(quiet=false){
-    if(!enabled||aiMode!==(quiet?'quiet':'panel')||switching||submitting||choosingQuiet||connecting||noteEditPreference||insertingQuiet||!settings||quiet&&(state?.pending||quietEditPreference||quietAutoPreference))return;const text=(quiet?quietQuestion:question).value.trim();if(!text)return;const current=context(),token=restoreToken;
+    if(!enabled||aiMode!==(quiet?'quiet':'panel')||switching||submitting||choosingQuiet||connecting||noteEditPreference||quietEditPreference||insertingQuiet||!settings||quiet&&(state?.pending||quietAutoPreference))return;const text=(quiet?quietQuestion:question).value.trim();if(!text)return;const current=context(),token=restoreToken;
     submitting=true;submitError=quietError='';quietChoiceNotice=false;clearTimeout(quietChoiceTimer);const clock=draftClock,steering=!!state?.pending;render();status(steering?'Sending follow-up…':'Starting…');
     try{const noteAccess=!quiet||state?.quietEditNote===true;await saveDraft();if(noteAccess&&!steering){if(globalThis.NoteDesktop)await globalThis.NotepadEditor?.ensureFile();await globalThis.NotepadEditor?.flush();}if(!enabled||token!==restoreToken||!sameContext(current))return;const file=globalThis.NotepadEditor?.file?.();const value=await request(steering?'AI_STEER':'AI_SEND',{id:crypto.randomUUID(),text,files:quiet?[]:files.map(f=>f.id),assistantId:current.assistantId,...noteAccess&&file?{noteBindingId:file.bindingId,noteFileHash:file.hash}:{}});if(!sameContext(current))return;if(clock===draftClock)question.value=quietQuestion.value='';if(!quiet){files=[];renderFiles();}render(value.assistant);await saveDraft();if(enabled&&token===restoreToken&&sameContext(current)){if(quiet){quietPromptOpen=false;renderQuiet();$('editor').focus({preventScroll:true});}else question.focus();}}catch(e){if(enabled&&token===restoreToken&&sameContext(current)){submitError=e.message;status(submitError,true);}}finally{if(sameContext(current)){submitting=false;$('assistant-send').disabled=!enabled||switching||!settings;$('assistant-send').textContent=state?.pending?'Steer':'Send';renderNoteEditing();renderQuiet();}}
   }
@@ -312,7 +315,7 @@
   function showOptions(){if(!enabled||switching)return;$('assistant-settings').hidden=!$('assistant-settings').hidden;if(!$('assistant-settings').hidden){if(!settings)void connect();void loadProjects();void history();}}
   $('quiet-close').addEventListener('click',closeQuietPrompt);
   async function setQuietPreference(automatic){
-    if(!enabled||aiMode!=='quiet'||switching||submitting||state?.pending||quietEditPreference||quietAutoPreference||insertingQuiet||automatic&&state?.quietEditNote!==true){renderQuiet();return;}
+    if(!enabled||aiMode!=='quiet'||switching||submitting||state?.pending||noteEditPreference||quietEditPreference||quietAutoPreference||insertingQuiet||automatic&&state?.quietEditNote!==true){renderQuiet();return;}
     const current=context(),token=restoreToken,preference={on:$(automatic?'quiet-auto-note':'quiet-edit-note').checked};if(automatic)quietAutoPreference=preference;else quietEditPreference=preference;renderQuiet();
     try{const r=await request(automatic?'AI_QUIET_NOTE_AUTO_SET':'AI_QUIET_NOTE_EDIT_SET',{enabled:preference.on,assistantId:current.assistantId});if(sameContext(current)&&token===restoreToken){quietError='';render(r.assistant);}}
     catch(e){if(enabled&&aiMode==='quiet'&&sameContext(current)&&token===restoreToken)quietError=e.message;}
@@ -328,7 +331,7 @@
   $('quiet-model').addEventListener('change',()=>void choose(true,true));$('quiet-thinking').addEventListener('change',()=>void choose(false,true));
   $('assistant-close').addEventListener('click',()=>hide());$('assistant-send').addEventListener('click',()=>void submit());
   $('assistant-edit-note').addEventListener('change',async()=>{
-    if(!enabled||switching||noteEditPreference){renderNoteEditing();return;}const current=context(),token=restoreToken,preference={on:$('assistant-edit-note').checked};submitError='';noteEditPreference=preference;render();
+    if(!enabled||switching||noteEditPreference||quietEditPreference){renderNoteEditing();return;}const current=context(),token=restoreToken,preference={on:$('assistant-edit-note').checked};submitError='';noteEditPreference=preference;render();
     try{if(preference.on){if(globalThis.NoteDesktop)await globalThis.NotepadEditor?.ensureFile();await globalThis.NotepadEditor?.flush();}if(!enabled||token!==restoreToken||!sameContext(current))return;const r=await request('AI_NOTE_EDIT_SET',{enabled:preference.on,assistantId:current.assistantId});if(sameContext(current)&&token===restoreToken)render(r.assistant);}catch(e){if(sameContext(current)&&token===restoreToken){submitError=e.message;status(e.message,true);}}finally{if(noteEditPreference===preference)noteEditPreference=null;render();}
   });
   $('assistant-note-apply').addEventListener('click',()=>{if(enabled&&!switching&&!$('note-apply-dialog').open){$('note-apply-dialog').returnValue='cancel';$('note-apply-dialog').showModal();}});

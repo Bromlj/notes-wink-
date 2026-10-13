@@ -26,7 +26,9 @@ const parseMirror=input=>JSON.parse(/^Authoritative editable note file: (.+)$/m.
 test('editing is opt-in and ordinary turns do not expose or create a note mirror',async t=>{
  const f=fixture(t);await f.send({text:'An ordinary question.'});
  const params=turnCall(f);
- assert.deepEqual(params.input,[{type:'text',text:'An ordinary question.'}]);
+ assert.deepEqual(params.input.at(-1),{type:'text',text:'An ordinary question.'});
+ assert.match(params.input[0].text,/\[NOTES_WORKSPACE_CONTEXT\][\s\S]*editing the current local notepad is OFF/);
+ assert(!JSON.stringify(params.input).includes('[NOTES_WORKSPACE_EDITABLE_NOTE]'));
  assert.deepEqual(params.runtimeWorkspaceRoots,[f.project]);
  assert.deepEqual(params.sandboxPolicy.writableRoots,[f.project]);
  assert.equal(fs.existsSync(path.join(f.dataRoot,'NoteWork')),false);
@@ -103,7 +105,11 @@ test('the next ordinary turn resets roots to the project and sends no obsolete m
  const params=turnCall(f);
  assert.equal(f.calls.filter(([method])=>method==='thread/start').length,1);
  assert.deepEqual(params.runtimeWorkspaceRoots,[f.project]);assert.deepEqual(params.sandboxPolicy.writableRoots,[f.project]);
- assert.deepEqual(params.input,[{type:'text',text:'Now answer normally.'}]);
+ assert.deepEqual(params.input.at(-1),{type:'text',text:'Now answer normally.'});
+ const context=JSON.stringify(params.input.slice(0,-1));
+ assert.match(context,/editing the current local notepad is OFF/);
+ assert(!context.includes('[NOTES_WORKSPACE_EDITABLE_NOTE]'));
+ assert(!context.includes(f.dataRoot));
 });
 
 test('malformed identity, text and revision values cannot create an editable copy',async t=>{

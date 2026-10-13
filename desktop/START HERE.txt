@@ -1,4 +1,4 @@
-NOTES WORKSPACE 5.3.3 — WINDOWS x64
+NOTES WORKSPACE 5.3.4 — WINDOWS x64
 
 START HERE
 1. Right-click the downloaded ZIP and choose Extract All.
@@ -35,12 +35,15 @@ Enter sends and closes it. Shift+Enter adds a line to the question.
 The checkboxes, from left to right:
   FIRST: let the next request read and edit the current real note file.
   SECOND: automatically apply that request's completed note revision.
-Both start off in every new note and are independent of sidebar Edit this note.
+Both start off in every new note. FIRST and sidebar Edit this note are the same
+permission and always agree; either editing control updates both views.
 Turn the first on to make the second available. Settings apply before sending;
 they cannot add permission to an already running request.
 
 FIRST OFF: receive an ordinary reply. A green Ready dot means it is complete.
-Press Alt+I to append the reply to the owning note once, with ordinary Undo.
+Press Alt+I to append only its final answer to this note once, with Undo.
+Progress updates stay in Reference. Asking to add/save a note defaults to this
+local notepad; cloud Pages or another destination require an explicit request.
 Ordinary replies are never inserted automatically.
 
 FIRST ON, SECOND OFF: Codex can edit the real note file in the background.
@@ -86,7 +89,8 @@ FULL SIDEBAR, REAL NOTES AND PROJECTS
 Alt+W opens Reference with named controls, attachments, activity and approvals.
 Your text and Codex replies have distinct colours and role labels.
 Edit this note above its question box enables direct note revisions, with
-visible progress while the sidebar is shown. Compact editing is independent.
+visible progress while the sidebar is shown. Its permission is shared with the
+compact left checkbox. Turning editing off also stops automatic compact apply.
 Alt+W can catch up a sidebar task; compact tasks use Alt+I or opted-in automatic
 application after returning with Alt+S.
 
@@ -133,7 +137,7 @@ the vendor Electron runtime's embedded icon and metadata; its bytes are not
 resource-modified. This release has no custom signing certificate, and Windows
 reputation or managed-computer policies can vary.
 
-TEST_REPORT.md records the 5.3.3 checks and their limits: 201 helper tests,
-69 renderer checks and 172 packaged-app checks, 442 in total. Runtime licenses
+TEST_REPORT.md records the 5.3.4 checks and their limits: 233 helper tests,
+139 renderer checks and 182 packaged-app checks, 554 in total. Runtime licenses
 and notices are included. Independent software, not affiliated with Microsoft
 or OpenAI; this is not Microsoft Notepad or the official Codex desktop UI.

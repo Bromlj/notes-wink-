@@ -1,4 +1,4 @@
-# Set up Notes Workspace 5.3.3
+# Set up Notes Workspace 5.3.4
 
 A Windows notepad with an optional Codex sidebar and a small **Notes for self** box. Ordinary notes work without signing in. For AI, each person connects **their own ChatGPT account**; no account, subscription, chat history or credentials are shared with the download.
 
@@ -44,7 +44,9 @@ For commands and project work, check **Windows project tools** on the Account pa
 | **First: edit this note** | The current note is not automatically sent to the request. Receive an ordinary reply. | The request can read and revise the current real note file using Codex's file tools. |
 | **Second: automatically add changes** | A completed note revision waits for **Alt+I**. | A completed, permitted note revision appears automatically while compact mode is unlocked, if your note and file still match the original baseline. |
 
-The second checkbox is available after the first is on. These settings are separate from the full sidebar's **Edit this note** option. They apply to the next request and cannot grant permission to a task already running. Each **+** note has a separate chat and starts with both compact settings off.
+The second checkbox is available after the first is on. **The first checkbox and the full sidebar's Edit this note are the same setting** and always agree. The second controls completed compact revisions only. Permissions apply to the next request and cannot be added to a task already running. Each **+** note has a separate chat and starts with both settings off. Turning note editing off also prevents automatic compact application.
+
+With editing off, asking to write a note returns the note content for **Alt+I** to insert. Progress messages and skill announcements stay in Reference. Adding or saving a note defaults to this local notepad; specify a cloud Page or another destination explicitly if that is what you want. Old replies saved before final-answer separation remain readable in Reference; resend them to generate a clean insertable answer.
 
 Automatic application is for **completed note revisions**, not streaming text or ordinary chat replies. It never accepts command, file-access or other approvals. If you disable it after a task finishes, its staged revision is retained for manual insertion. Enabling it afterward cannot add automatic consent to an older request.
 

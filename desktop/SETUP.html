@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
-  <title>Notes Workspace 5.3.3 — Setup guide</title>
+  <title>Notes Workspace 5.3.4 — Setup guide</title>
   <style>
     :root { color-scheme:light; font:16px/1.6 'Segoe UI Variable','Segoe UI',system-ui,sans-serif; color:#242424; background:#f4f5f7; }
     * { box-sizing:border-box; }
@@ -42,7 +42,7 @@
 <body>
 <main>
   <header>
-    <p class="version">Notes Workspace · Windows · 5.3.3</p>
+    <p class="version">Notes Workspace · Windows · 5.3.4</p>
     <h1>Set up your own notepad and AI</h1>
     <p class="intro">Write ordinary notes, open a full Codex sidebar, or use the small <strong>Notes for self</strong> box. Every person signs in with their own account.</p>
     <p>No separate Python, Node, development environment or API key is needed.</p>
@@ -51,7 +51,7 @@
   <section aria-labelledby="install">
     <h2 id="install">1. Install the Windows app</h2>
     <ol>
-      <li>Open <a href="https://github.com/Bromlj/notes-wink-/releases/latest">the latest Windows release</a> and download the <strong>5.3.3 Windows ZIP</strong>.</li>
+      <li>Open <a href="https://github.com/Bromlj/notes-wink-/releases/latest">the latest Windows release</a> and download the <strong>5.3.4 Windows ZIP</strong>.</li>
       <li>Right-click the ZIP and choose <strong>Extract All</strong>. Extract the entire package; keep its program files and <code>resources</code> folder together.</li>
       <li>Open the extracted <strong>Notes Workspace</strong> folder and double-click <code>Install.cmd</code>.</li>
       <li>Open the new <strong>blue notepad desktop shortcut</strong>. You can start writing notes immediately.</li>
@@ -87,17 +87,18 @@
         <caption>The two small checkboxes, from left to right</caption>
         <thead><tr><th scope="col">Checkbox</th><th scope="col">What it enables</th></tr></thead>
         <tbody>
-          <tr><th scope="row">First · left</th><td>Let the next compact request read and edit this note's real file. This is separate from <strong>Edit this note</strong> in the full sidebar.</td></tr>
+          <tr><th scope="row">First · left</th><td>Let the next request read and edit this note's real file. This is the same setting as <strong>Edit this note</strong> in the full sidebar; both views always agree.</td></tr>
           <tr><th scope="row">Second · right</th><td>Automatically show a completed, permitted note revision while quiet mode is unlocked. The first box must be on to enable this control.</td></tr>
         </tbody>
       </table>
     </div>
-    <p>Choose the boxes <strong>before sending</strong>. They cannot add permissions to a request already running. Turning off editing does not cancel file changes already accepted; the automatic preference is retained but gives new requests no note access while the first box is off.</p>
+    <p>Choose the boxes <strong>before sending</strong>. They cannot add permissions to a request already running. Turning off editing does not cancel accepted file changes, but it stops automatic compact application and gives new requests no note access. The automatic preference is retained while its control is disabled.</p>
     <ul>
-      <li><strong>Both off:</strong> get a normal reply. When the green dot appears, <kbd>Alt+I</kbd> appends that completed reply to the note once.</li>
+      <li><strong>Both off:</strong> get a normal reply. When the green dot appears, <kbd>Alt+I</kbd> appends only its final answer once. Progress updates stay in Reference.</li>
       <li><strong>First box only:</strong> Codex can edit the real note file in the background. The displayed note stays unchanged until <kbd>Alt+I</kbd> applies its completed revision once. <kbd>Ctrl+Z</kbd> undoes it.</li>
       <li><strong>Both on:</strong> a completed note revision appears automatically while quiet mode is unlocked. A brief green pulse means done, including a task that made no note changes. No partial edits or completion message are inserted.</li>
     </ul>
+    <p>Adding or saving a note means this local notepad. A cloud Page or another destination requires an explicit request. With editing off, a note request returns ready-to-insert note content. Old combined replies remain readable in Reference; resend an old request to generate a clean insertable answer.</p>
     <p>The tiny status dot sits in the bottom bar beside <strong>Plain text</strong>: grey means working, green means ready or done, and amber means attention is needed. Open <kbd>Alt+W</kbd> to inspect a conflict, error or approval request. The app does not automatically accept command or additional-access approvals.</p>
   </section>
 

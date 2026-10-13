@@ -57,7 +57,7 @@ test('note editing stages preserve privacy, conflicts and note/chat bindings',as
   await t.test('manual edits win until the user explicitly applies the staged revision',async()=>{await f.manual('My manual change');await f.publish(id,{noteId:base.id,baseRevision:base.revision,sequence:2,text:'New AI revision'});assert.equal(f.note().text,'My manual change');assert.equal(f.doc.text,'My manual change');assert.equal(f.assistant().noteEditStage.conflict,true);assert.equal(f.assistant().noteEditStage.conflictReason,'local_changes');const r=await f.request('AI_NOTE_APPLY',{force:true});assert.equal(r.applied,true);assert.equal(f.doc.text,'New AI revision');assert.equal(f.assistant().noteEditStage.conflictReason,undefined);});
   await t.test('discard rejects the same snapshot but allows a genuinely later revision',async()=>{await f.hide();await f.publish(id,{noteId:base.id,baseRevision:base.revision,sequence:3,text:'Discard me'});await f.reveal();await f.request('AI_NOTE_DISCARD');assert.equal(f.assistant().noteEditStage,null);await f.publish(id,{noteId:base.id,baseRevision:base.revision,sequence:3,text:'Discard me again'});assert.equal(f.assistant().noteEditStage,null);await f.publish(id,{noteId:base.id,baseRevision:base.revision,sequence:4,text:'Later revision'});assert.equal(f.assistant().noteEditStage.text,'Later revision');assert.equal(f.assistant().noteEditStage.conflict,false);assert.equal(f.doc.text,'Later revision');});
   await t.test('disabling permission permanently revokes this accepted run',async()=>{await f.request('AI_NOTE_EDIT_SET',{enabled:false});await f.request('AI_NOTE_EDIT_SET',{enabled:true});await f.publish(id,{noteId:base.id,baseRevision:base.revision,sequence:5,text:'Revoked revision'},'completed');assert.equal(f.note().text,'Later revision');assert.equal(f.assistant().pending,null);});
-  await t.test('a new note has an independent chat and editing starts disabled',async()=>{const previous=f.assistantId,r=await f.newNote('Second note');assert.notEqual(r.assistant.id,previous);assert.equal(r.assistant.noteId,r.note.id);assert.equal(r.assistant.editNote,false);assert.equal(f.doc.text,'Second note');});
+  await t.test('a new note has an independent chat and both editing controls start disabled',async()=>{const previous=f.assistantId,r=await f.newNote('Second note');assert.notEqual(r.assistant.id,previous);assert.equal(r.assistant.noteId,r.note.id);assert.equal(r.assistant.editNote,false);assert.equal(r.assistant.quietEditNote,false);assert.equal(f.doc.text,'Second note');});
 });
 test('malformed accepted renderer edits release the commit latch without overwriting canonical content',async t=>{
   const f=await fixture();t.after(()=>f.close());await f.reveal();await f.manual('Canonical note');await f.request('AI_NOTE_EDIT_SET',{enabled:true});const base={...f.doc},id=await f.send();f.setProposalMode('invalid');await f.publish(id,{noteId:base.id,baseRevision:base.revision,sequence:1,text:'Uncommitted AI text'},'completed');assert.equal(f.note().text,'Canonical note');assert.equal(f.note().revision,base.revision);assert.equal(f.latch,null);assert.equal(f.assistant().noteEditStage.conflict,true);assert.equal(f.assistant().noteEditStage.conflictReason,'save_failed');const failed=f.messages.find(m=>m.type==='NOTE_AI_FAILED');assert.equal(failed.editRequestId,id);assert.equal(failed.revision,base.revision);
@@ -126,11 +126,12 @@ test('renderer conflict reasons survive completion and are cleared only after a 
   f.setProposalMode('accept');const applied=await f.request('AI_NOTE_APPLY',{force:true});assert.equal(applied.applied,true);assert.equal(f.note().text,'AI revision');assert.equal(f.assistant().noteEditStage.conflictReason,undefined);
 });
 
-test('quiet submission never grants the note even when saved direct editing remains enabled',async t=>{
+test('quiet submission inherits the same editing consent enabled in Reference',async t=>{
   const f=await fixture();t.after(()=>f.close());await f.reveal();await f.manual('Ordinary private note');await f.request('AI_NOTE_EDIT_SET',{enabled:true});await f.reveal('quiet');
-  assert.equal(f.messages.filter(m=>m.type==='AI_MODE').at(-1).mode,'quiet');const id=await f.send(),pending=f.assistant().pending,submitted=f.calls.find(x=>x.action==='send'&&x.data.requestId===id).data;
-  assert.equal(f.assistant().editNote,true);assert.equal(pending.mode,'quiet');assert.equal(pending.noteEditBase,undefined);assert.equal(pending.noteEditTarget,undefined);assert.equal(Object.hasOwn(submitted,'noteEdit'),false);assert.equal(f.calls.some(x=>x.action==='notePrepare'),false);
-  await f.publish(id,null,'completed');assert.deepEqual(f.assistant().lastTurn,{requestId:id,mode:'quiet',status:'completed'});assert.equal(f.assistant().messages.at(-1).requestId,id);assert.equal(f.assistant().messages.at(-1).mode,'quiet');assert.equal(f.note().text,'Ordinary private note');assert.equal(f.doc.text,'Ordinary private note');assert.equal(f.messages.filter(m=>m.type==='NOTE_AI_PROPOSE').length,0);
+  assert.equal(f.messages.filter(m=>m.type==='AI_MODE').at(-1).mode,'quiet');const file=f.setFile(),base={...f.doc},id=await f.send({noteBindingId:file.bindingId,noteFileHash:file.hash}),pending=f.assistant().pending,submitted=f.calls.find(x=>x.action==='send'&&x.data.requestId===id).data;
+  assert.equal(f.assistant().editNote,true);assert.equal(f.assistant().quietEditNote,true);assert.equal(pending.mode,'quiet');assert.equal(pending.noteEditBase.text,base.text);
+  assert.deepEqual(submitted.noteEdit,{noteId:base.id,text:base.text,revision:base.revision,bindingId:file.bindingId,fileHash:file.hash});assert.equal(f.calls.filter(x=>x.action==='notePrepare').length,1);
+  await f.publish(id,null,'completed');assert.deepEqual(f.assistant().lastTurn,{requestId:id,mode:'quiet',status:'completed',noteEdit:true,noteEditTarget:{noteId:base.id,baseRevision:base.revision,bindingId:file.bindingId,fileHash:file.hash}});assert.equal(f.assistant().messages.at(-1).requestId,id);assert.equal(f.assistant().messages.at(-1).mode,'quiet');assert.equal(f.note().text,'Ordinary private note');assert.equal(f.doc.text,'Ordinary private note');assert.equal(f.messages.filter(m=>m.type==='NOTE_AI_PROPOSE').length,0);
 });
 test('switching to quiet freezes an accepted panel revision until Reference is explicitly reopened',async t=>{
   const f=await fixture();t.after(()=>f.close());await f.reveal();await f.manual('Frozen note');await f.request('AI_NOTE_EDIT_SET',{enabled:true});const base={...f.doc},id=await f.send();await f.reveal('quiet');
@@ -170,12 +171,12 @@ async function finishQuietEdit(f,job,text='Changed quietly',extra={}){
   return file;
 }
 function quietApply(f,job,extra={}){return f.request('AI_QUIET_NOTE_APPLY',{requestId:job.id,bindingId:job.file.bindingId,expectedHash:job.file.hash,...extra});}
-test('quiet note editing is separate, off for new notes and cannot be toggled hidden, in panel mode or during a turn',async t=>{
+test('quiet editing control shares consent, defaults off and cannot be toggled hidden, in panel mode or during a turn',async t=>{
   const f=await fixture();t.after(()=>f.close());assert.equal(f.assistant().quietEditNote,false);
   assert.equal((await f.request('AI_QUIET_NOTE_EDIT_SET',{enabled:true})).ok,false);
   await f.reveal();assert.equal((await f.request('AI_QUIET_NOTE_EDIT_SET',{enabled:true})).ok,false);
   await f.reveal('quiet');assert.equal((await f.request('AI_QUIET_NOTE_EDIT_SET',{enabled:'true'})).ok,false);
-  const job=await quietEditable(f);assert.equal(f.assistant().editNote,false);assert.equal(f.assistant().quietEditNote,true);
+  const job=await quietEditable(f);assert.equal(f.assistant().editNote,true);assert.equal(f.assistant().quietEditNote,true);
   const pending=await f.request('AI_QUIET_NOTE_EDIT_SET',{enabled:false});assert.equal(pending.ok,false);assert.match(pending.error,/active turn/);assert.equal(f.assistant().quietEditNote,true);
   await finishQuietEdit(f,job);await f.newNote('Different note');assert.equal(f.assistant().quietEditNote,false);assert.equal(f.assistant().editNote,false);
 });
@@ -204,14 +205,14 @@ test('quiet authorized working and hidden completion stage real file changes wit
 test('only explicit quiet Apply projects the completed captured revision once, with no replacement consent',async t=>{
   const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f);await finishQuietEdit(f,job);
   assert.equal((await f.request('AI_NOTE_SYNC')).applied,false);assert.equal((await f.request('AI_NOTE_APPLY',{force:true})).reason,'quiet');assert.equal(f.note().text,job.base.text);
-  const applied=await quietApply(f,job,{force:true});assert.equal(applied.ok,true,applied.error);assert.equal(applied.applied,true);assert.equal(f.note().text,'Changed quietly');assert.equal(f.doc.text,'Changed quietly');assert.equal(f.assistant().editNote,false);
+  const applied=await quietApply(f,job,{force:true});assert.equal(applied.ok,true,applied.error);assert.equal(applied.applied,true);assert.equal(f.note().text,'Changed quietly');assert.equal(f.doc.text,'Changed quietly');assert.equal(f.assistant().editNote,true);assert.equal(f.assistant().quietEditNote,true);
   const proposal=f.messages.find(m=>m.type==='NOTE_AI_PROPOSE');assert.equal(proposal.explicitQuiet,true);assert.equal(proposal.confirmed,false);assert.equal(proposal.editRequestId,job.id);
   assert.equal(f.messages.find(m=>m.type==='NOTE_AI_COMMITTED').explicitQuiet,true);
   assert.equal((await quietApply(f,job)).reason,'already_applied');assert.equal(f.messages.filter(m=>m.type==='NOTE_AI_PROPOSE').length,1);
 });
-test('opening the full panel or changing its independent permission never automatically applies a quiet revision',async t=>{
+test('opening Reference and turning shared editing off preserves the captured quiet revision without automatically applying it',async t=>{
   const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f);await f.reveal('panel');await f.request('AI_NOTE_EDIT_SET',{enabled:true});await f.request('AI_NOTE_EDIT_SET',{enabled:false});
-  assert(f.assistant().pending.noteEditBase);await finishQuietEdit(f,job);assert.equal(f.note().text,job.base.text);assert.equal(f.messages.some(m=>m.type==='NOTE_AI_PROPOSE'),false);
+  assert(f.assistant().pending.noteEditBase);assert.equal(f.assistant().editNote,false);assert.equal(f.assistant().quietEditNote,false);await finishQuietEdit(f,job);assert.equal(f.note().text,job.base.text);assert.equal(f.messages.some(m=>m.type==='NOTE_AI_PROPOSE'),false);
   await f.request('AI_NOTE_EDIT_SET',{enabled:true});assert.equal((await f.request('AI_NOTE_SYNC')).reason,'quiet');assert.equal((await quietApply(f,job)).ok,false);await f.reveal('quiet');assert.equal((await quietApply(f,job)).applied,true);
 });
 test('manual edits and formatting changes cannot be overridden by quiet Apply even with force:true',async t=>{
@@ -290,4 +291,60 @@ test('hiding during automatic file verification cancels a delayed visible propos
   const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f,'Hide race baseline',{automatic:true});await finishQuietEdit(f,job);f.delayNative('noteVerify',150);
   const applying=quietApply(f,job,{automatic:true});await until(()=>f.calls.some(x=>x.action==='noteVerify'),'automatic disk verification');await f.hide();const result=await applying;
   assert.equal(result.applied,false);assert.equal(result.reason,'hidden');assert.equal(f.note().text,job.base.text);assert.equal(f.doc.text,job.base.text);assert.equal(f.assistant().noteEditStage.appliedRevision,undefined);
+});
+
+test('the compact and Reference editing controls update one per-note consent in both directions',async t=>{
+  const f=await fixture();t.after(()=>f.close());await f.reveal('panel');
+  const shared=enabled=>{assert.equal(f.assistant().editNote,enabled);assert.equal(f.assistant().quietEditNote,enabled);};
+  shared(false);
+  assert.equal((await f.request('AI_NOTE_EDIT_SET',{enabled:true})).ok,true);shared(true);
+  await f.reveal('quiet');shared(true);
+  assert.equal((await f.request('AI_QUIET_NOTE_EDIT_SET',{enabled:false})).ok,true);shared(false);
+  await f.reveal('panel');shared(false);
+  await f.reveal('quiet');assert.equal((await f.request('AI_QUIET_NOTE_EDIT_SET',{enabled:true})).ok,true);shared(true);
+  await f.reveal('panel');shared(true);
+  assert.equal((await f.request('AI_NOTE_EDIT_SET',{enabled:false})).ok,true);shared(false);
+  await f.reveal('quiet');shared(false);
+});
+
+test('enabling shared editing cannot retrofit a file grant into an already submitted ordinary turn',async t=>{
+  for(const mode of ['quiet','panel'])await t.test(mode,async t=>{
+    const f=await fixture();t.after(()=>f.close());await f.reveal(mode);await f.manual('Ungrantable existing note');
+    const base={...f.doc},id=await f.send(),sent=f.calls.find(x=>x.action==='send'&&x.data.requestId===id).data;
+    assert.equal(Object.hasOwn(sent,'noteEdit'),false);assert.equal(f.assistant().pending.noteEditBase,undefined);
+    await f.reveal('panel');assert.equal((await f.request('AI_NOTE_EDIT_SET',{enabled:true})).ok,true);
+    assert.equal(f.assistant().editNote,true);assert.equal(f.assistant().quietEditNote,true);
+    assert.equal(f.assistant().pending.noteEditBase,undefined);assert.equal(f.assistant().pending.noteEditTarget,undefined);
+    await f.publish(id,{noteId:base.id,baseRevision:base.revision,sequence:1,text:'Unrequested note revision'},'completed');
+    assert.equal(f.assistant().noteEditStage==null,true);assert.equal(f.note().text,base.text);assert.equal(f.doc.text,base.text);
+    assert.equal(f.messages.some(m=>m.type==='NOTE_AI_PROPOSE'),false);
+    const file=f.setFile(),next=await f.send({noteBindingId:file.bindingId,noteFileHash:file.hash});
+    assert.equal(f.calls.find(x=>x.action==='send'&&x.data.requestId===next).data.noteEdit.noteId,base.id);
+    await f.publish(next,null,'completed');
+  });
+});
+
+test('turning compact editing off suppresses automatic insertion but keeps explicit captured-revision insertion available',async t=>{
+  const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f,'Shared automatic baseline',{automatic:true});
+  await finishQuietEdit(f,job,'Accepted revision requiring explicit insertion');
+  const captured=JSON.parse(JSON.stringify(f.assistant().lastTurn.noteEditTarget));
+  assert.equal((await f.request('AI_QUIET_NOTE_EDIT_SET',{enabled:false})).ok,true);
+  assert.equal(f.assistant().editNote,false);assert.equal(f.assistant().quietEditNote,false);assert.equal(f.assistant().quietAutoApply,true);
+  assert.deepEqual(f.assistant().lastTurn.noteEditTarget,captured);assert.equal(f.assistant().lastTurn.quietAutoApply,true);
+  const denied=await quietApply(f,job,{automatic:true});assert.equal(denied.ok,false);assert.match(denied.error,/note editing is now off/);
+  assert.equal(f.note().text,job.base.text);assert.equal(f.doc.text,job.base.text);assert.equal(f.messages.some(m=>m.type==='NOTE_AI_PROPOSE'),false);
+  assert.equal((await quietApply(f,job)).applied,true);assert.equal(f.note().text,'Accepted revision requiring explicit insertion');
+  const next=await f.send();assert.equal(Object.hasOwn(f.calls.find(x=>x.action==='send'&&x.data.requestId===next).data,'noteEdit'),false);await f.publish(next,null,'completed');
+});
+
+test('turning shared editing off in Reference during a quiet task preserves its grant and stops automatic visible application',async t=>{
+  const f=await fixture();t.after(()=>f.close());const job=await quietEditable(f,'Captured quiet baseline',{automatic:true});
+  const captured=JSON.parse(JSON.stringify(f.assistant().pending.noteEditTarget)),base=JSON.parse(JSON.stringify(f.assistant().pending.noteEditBase));
+  await f.reveal('panel');assert.equal((await f.request('AI_NOTE_EDIT_SET',{enabled:false})).ok,true);
+  assert.equal(f.assistant().editNote,false);assert.equal(f.assistant().quietEditNote,false);
+  assert.deepEqual(f.assistant().pending.noteEditTarget,captured);assert.deepEqual(f.assistant().pending.noteEditBase,base);
+  await finishQuietEdit(f,job,'Quiet work accepted before opt-out');assert.equal(f.assistant().noteEditStage.text,'Quiet work accepted before opt-out');
+  assert.equal(f.note().text,job.base.text);assert.equal(f.doc.text,job.base.text);
+  await f.reveal('quiet');assert.equal((await quietApply(f,job,{automatic:true})).ok,false);
+  assert.equal(f.messages.some(m=>m.type==='NOTE_AI_PROPOSE'),false);assert.equal((await quietApply(f,job)).applied,true);
 });

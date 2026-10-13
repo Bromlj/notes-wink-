@@ -41,6 +41,10 @@
   }
   function rangeFor(start,end){
     const p=projection(),range=document.createRange();
+    // Replacing the entire projected text must also select its containers.
+    // A range from the first to last text node stays inside table cells and
+    // leaves empty rows/separators behind when the replacement is empty.
+    if(start===0&&end===p.plain.length&&start!==end){range.selectNodeContents(editor);return range;}
     // A projected block separator has two sides. After its newline, the caret
     // belongs inside the next block, including an empty trailing DIV. Keeping
     // it before that DIV drops a requested blank line during native insertion.
@@ -56,6 +60,7 @@
   editor.select=()=>{editor.focus();const r=document.createRange();r.selectNodeContents(editor);getSelection().removeAllRanges();getSelection().addRange(r);};
   editor.setSelectionRange=(start,end)=>{const r=rangeFor(start,end);getSelection().removeAllRanges();getSelection().addRange(r);savedRange=r.cloneRange();};
   editor.setRangeText=(t,start,end)=>{editor.setSelectionRange(start,end);return document.execCommand('insertText',false,t);};
+  function replaceAll(t){editor.select();return document.execCommand('insertText',false,t);}
   function insertExact(t,start,end){
     const range=rangeFor(start,end),node=range.endContainer;let caret;
     // Chromium moves a caret at a raw trailing LF before that LF. A temporary
@@ -89,5 +94,5 @@
   // Keep the selection when clicking a menu or toolbar, including link dialogs.
   document.querySelector('.menubar').addEventListener('pointerdown',remember);
   document.addEventListener('selectionchange',remember);editor.addEventListener('input',update);
-  globalThis.RichEditor={format,restore,insertExact,sanitize:safeHTML,html:()=>safeHTML(editor.innerHTML),load(html,plain){editor.innerHTML=html?safeHTML(html):'';if(!html)editor.value=plain;update();}};
+  globalThis.RichEditor={format,restore,insertExact,replaceAll,sanitize:safeHTML,html:()=>safeHTML(editor.innerHTML),load(html,plain){editor.innerHTML=html?safeHTML(html):'';if(!html)editor.value=plain;update();}};
 })();

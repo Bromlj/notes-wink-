@@ -2,6 +2,7 @@
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),{spawn}=require('node:child_process'),readline=require('node:readline'),{createHash}=require('node:crypto');
 const {EventEmitter}=require('node:events');
 const MAX_NOTE_BYTES=2*1024*1024,UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const NOTEPAD_INSTRUCTIONS='You are embedded in Notes Workspace, a local Windows notepad with Codex tools. Unless the user explicitly names another destination, this note, add/write/save a note and similar requests mean the current local notepad document, not ChatGPT Pages, Spaces or another cloud service. Do not route an ordinary local-note request to a cloud skill merely because it produces prose. Explicit requests for named cloud destinations still use their normal tools and skills. Local-note editing is authorized only by the CURRENT turn\'s authoritative-file grant, never an older turn. With editing off, provide only the requested paste-ready note content in the final answer; do not edit or search for the note, save it elsewhere, or claim it was saved. This restriction concerns the current notepad document; explicitly requested project, code and tool work remains available. With editing on, write the requested document content into the granted file, preserve relevant existing material and verify the actual edit. Keep commentary, tool logs, skill announcements, completion acknowledgements and UI directives out of the note file. Use commentary for progress and the final answer for the completed result.';
 function findCodex(options={}){
   // These paths are supplied by the trusted launcher, never by a renderer RPC.
   // The packaged desktop app ships the open-source CLI; the legacy extension
@@ -47,7 +48,7 @@ class Codex extends EventEmitter {
     t.activity??=new Map();
     if(m.method==='item/agentMessage/delta'){t.items.set(p.itemId,(t.items.get(p.itemId)||'')+p.delta);this.progress(p.threadId,'Responding');}
     if(m.method==='item/started'||m.method==='item/completed'){
-      const i=p.item;if(i?.type==='agentMessage'){if(i.text)t.items.set(i.id,i.text);}
+      const i=p.item;if(i?.type==='agentMessage'){this.agentItem(t,i);}
       else if(i && i.type!=='userMessage' && i.type!=='reasoning'){
         const old=t.activity.get(i.id)||{};
         const item={...old,...i,status:i.status||(m.method==='item/completed'?'completed':'inProgress')};
@@ -67,14 +68,25 @@ class Codex extends EventEmitter {
     }
     if(m.method==='turn/completed')this.finish(p.threadId,p.turn);
   }
-  snapshot(threadId,t){return {requestId:t.requestId,threadId,text:[...t.items.values()].join('\n\n').slice(0,500000),activity:[...(t.activity||new Map()).values()],diff:t.diff||'',plan:t.plan||[],requests:[...this.approvals.values()].filter(r=>r.threadId===threadId).map(({id,kind,params})=>({id,kind,params})),...(t.note?.direct?{noteFileError:t.note.error||''}:{}),...(t.note?.sequence?{noteEdit:{text:t.note.text,sequence:t.note.sequence,noteId:t.note.noteId,baseRevision:t.note.baseRevision,...(t.note.direct?{file:t.note.metadata}:{} )}}:{})};}
+  agentItem(t,item){
+    if(typeof item.text==='string')t.items.set(item.id,item.text);
+    if(item.phase==='commentary'||item.phase==='final_answer'){t.messagePhases??=new Map();t.messagePhases.set(item.id,item.phase);}
+  }
+  finalText(t){
+    const finals=[];let explicit=false,legacy='';
+    for(const [id,text]of t.items){const phase=t.messagePhases?.get(id);if(phase==='final_answer'){explicit=true;finals.push(text);}else if(phase!=='commentary'&&typeof text==='string'&&text.trim())legacy=text;}
+    // An explicit empty final is authoritative. Older unphased servers use the
+    // last nonempty unknown message; known commentary is never an insert result.
+    return (explicit?finals.join('\n\n'):legacy).slice(0,500000);
+  }
+  snapshot(threadId,t){return {requestId:t.requestId,threadId,text:[...t.items.values()].join('\n\n').slice(0,500000),finalText:this.finalText(t),activity:[...(t.activity||new Map()).values()],diff:t.diff||'',plan:t.plan||[],requests:[...this.approvals.values()].filter(r=>r.threadId===threadId).map(({id,kind,params})=>({id,kind,params})),...(t.note?.direct?{noteFileError:t.note.error||''}:{}),...(t.note?.sequence?{noteEdit:{text:t.note.text,sequence:t.note.sequence,noteId:t.note.noteId,baseRevision:t.note.baseRevision,...(t.note.direct?{file:t.note.metadata}:{} )}}:{})};}
   progress(threadId,phase){const t=this.turns.get(threadId);if(t)this.emit('update',{...this.snapshot(threadId,t),status:'working',phase:[...this.approvals.values()].some(r=>r.threadId===threadId)?'Waiting for your response':phase});}
   noteOutcome(t,turn){
     const n=t.note;if(!n)return null;
     const changed=n.text!==n.initialText||!!n.direct&&n.metadata.hash!==n.initialHash,error=n.error||turn.error?.message||(turn.status==='interrupted'?'Stopped before this task completed.':turn.status!=='completed'?'Codex could not complete this note-editing request.':'');
     return {requestId:t.requestId,noteId:n.noteId,baseRevision:n.baseRevision,status:error?'error':changed?'changed':'unchanged',changed,sequence:n.sequence,...(error?{error:String(error).slice(0,4000)}:{})};
   }
-  finish(threadId,turn){const t=this.turns.get(threadId);if(!t)return;clearTimeout(t.timer);clearInterval(t.note?.timer);this.pollNote(threadId,t,false);for(const i of turn.items||[])if(i.type==='agentMessage')t.items.set(i.id,i.text);for(const [id,r]of this.approvals)if(r.threadId===threadId){this.approvals.delete(id);this.writeResponse(r.rpcId,r.kind==='permissions'?{permissions:{},scope:'turn'}:r.kind==='input'?{answers:{}}:r.kind==='elicitation'?{action:'cancel',content:null}:{decision:'cancel'});}this.turns.delete(threadId);const outcome=this.noteOutcome(t,turn);try{this.emit('update',{...this.snapshot(threadId,t),status:turn.status||'failed',error:turn.error?.message||(turn.status==='interrupted'?'Stopped.':turn.status==='failed'?'Codex could not complete this request.':''),...(outcome?{noteEditOutcome:outcome}:{})});}finally{this.disposeNote(t);}}
+  finish(threadId,turn){const t=this.turns.get(threadId);if(!t)return;clearTimeout(t.timer);clearInterval(t.note?.timer);this.pollNote(threadId,t,false);for(const i of turn.items||[])if(i.type==='agentMessage')this.agentItem(t,i);for(const [id,r]of this.approvals)if(r.threadId===threadId){this.approvals.delete(id);this.writeResponse(r.rpcId,r.kind==='permissions'?{permissions:{},scope:'turn'}:r.kind==='input'?{answers:{}}:r.kind==='elicitation'?{action:'cancel',content:null}:{decision:'cancel'});}this.turns.delete(threadId);const outcome=this.noteOutcome(t,turn);try{this.emit('update',{...this.snapshot(threadId,t),status:turn.status||'failed',error:turn.error?.message||(turn.status==='interrupted'?'Stopped.':turn.status==='failed'?'Codex could not complete this request.':''),...(outcome?{noteEditOutcome:outcome}:{})});}finally{this.disposeNote(t);}}
   prepareNote(p){
     if(p.noteEdit==null)return null;
     const n=p.noteEdit;
@@ -196,7 +208,7 @@ class Codex extends EventEmitter {
     let threadId=p.threadId;
     if(this.loaded.has(threadId)&&this.loaded.get(threadId)!==cwd)throw Error('Start a new conversation to change project folders.');
     if(!threadId||!this.loaded.has(threadId)){
-      const result=await this.rpc(threadId?'thread/resume':'thread/start',{...(threadId?{threadId}:{}),cwd,runtimeWorkspaceRoots:[cwd],model:p.model,approvalPolicy:'on-request',approvalsReviewer:'user',sandbox:'workspace-write'});threadId=result.thread.id;this.loaded.set(threadId,cwd);
+      const result=await this.rpc(threadId?'thread/resume':'thread/start',{...(threadId?{threadId}:{}),cwd,runtimeWorkspaceRoots:[cwd],model:p.model,approvalPolicy:'on-request',approvalsReviewer:'user',sandbox:'workspace-write',developerInstructions:NOTEPAD_INSTRUCTIONS});threadId=result.thread.id;this.loaded.set(threadId,cwd);
     }
     if(this.cancelled.delete(p.requestId))throw Error('Stopped before submission.');
     if(this.turns.has(threadId))throw Error('A response is already running.');
@@ -204,7 +216,8 @@ class Codex extends EventEmitter {
     const t={requestId:p.requestId,items:new Map(),activity:new Map(),turnId:null,project:cwd,note};this.turns.set(threadId,t);
     if(note)note.timer=setInterval(()=>this.pollNote(threadId,t),150).unref();
     try{
-      const result=await this.rpc('turn/start',{threadId,cwd,runtimeWorkspaceRoots:roots,model:p.model,effort:p.effort,approvalPolicy:'on-request',approvalsReviewer:'user',sandboxPolicy:{type:'workspaceWrite',writableRoots:roots,networkAccess:false},input:[...(note?[this.noteInput(note)]:[]),...files.map(f=>f.input),{type:'text',text:p.text}]});
+      const context={type:'text',text:'[NOTES_WORKSPACE_CONTEXT]\n'+NOTEPAD_INSTRUCTIONS+'\nCurrent request: '+(note?'editing the current local notepad is enabled. The following authoritative-file grant identifies the only current note target.':'editing the current local notepad is OFF. There is no current note-file grant. For a note request, return the requested note content in the final answer for explicit insertion; do not save a different document.')+'\n[/NOTES_WORKSPACE_CONTEXT]'};
+      const result=await this.rpc('turn/start',{threadId,cwd,runtimeWorkspaceRoots:roots,model:p.model,effort:p.effort,approvalPolicy:'on-request',approvalsReviewer:'user',sandboxPolicy:{type:'workspaceWrite',writableRoots:roots,networkAccess:false},input:[...(note?[this.noteInput(note)]:[]),context,...files.map(f=>f.input),{type:'text',text:p.text}]});
       t.turnId=result.turn.id;
       if(this.cancelled.delete(p.requestId))await this.rpc('turn/interrupt',{threadId,turnId:t.turnId});
       for(const id of p.files||[])this.attachments.delete(id);return {threadId,turnId:t.turnId};
